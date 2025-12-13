@@ -1,11 +1,14 @@
 const express = require('express');
-const cors = require('cors');
-const routes = require('./routes');
-
 const app = express();
-routes(app);
+require('dotenv').config();
+const connectDB = require('./config/database');
+const routes = require('./routes');
+const { errorHandler } = require('./middlewares/error.middleware');
 
-app.use(cors());
+connectDB();
+
 app.use(express.json());
+routes(app);
+app.use(errorHandler);
 
 module.exports = app;
