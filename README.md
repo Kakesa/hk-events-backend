@@ -1,4 +1,13 @@
 # HK Events Backend
+
+<!-- Auteur info -->
+name: Espoir Kakesa
+email: espoirkakesa2@gmail.com
+url: https://espoir-kakesa.netlify.app
+
+
+## Description
+
 This is the backend service for the HK Events application, which manages event data and provides APIs for frontend consumption.
 ## Features
 - RESTful API for event management
