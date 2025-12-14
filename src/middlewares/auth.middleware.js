@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const Organizer = require('../modules/organizer/organizer.model');
+const Organizer = require('../modules/users/users.model');
 
 exports.protect = async (req, res, next) => {
   try {

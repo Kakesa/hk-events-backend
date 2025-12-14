@@ -5,11 +5,11 @@ const register = async (req, res, next) => {
   try {
     console.log("📩 Données reçues :", req.body);
 
-    const organizer = await authService.register(req.body);
+    const user = await authService.register(req.body);
 
     res.status(201).json({
       success: true,
-      data: organizer,
+      data: user,
     });
   } catch (err) {
     next(err);
@@ -19,13 +19,13 @@ const register = async (req, res, next) => {
 // ================= LOGIN =================
 const login = async (req, res, next) => {
   try {
-    const { token, organizer } = await authService.login(req.body);
+    const { token, user } = await authService.login(req.body);
 
     res.status(200).json({
       success: true,
       data: {
         token,
-        organizer,
+        user,
       },
     });
   } catch (err) {

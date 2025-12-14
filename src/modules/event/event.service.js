@@ -2,29 +2,49 @@ const Event = require('./event.model');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const slugify = require('slugify');
 
-// Dossier local pour stocker les images
+// ==================== UPLOAD LOCAL ====================
+
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// Fonction utilitaire pour sauvegarder un fichier localement
 const saveFileLocal = async (file) => {
   if (!file || !file.buffer) throw new Error('Fichier invalide');
-  
+
   const fileName = `${uuidv4()}-${file.originalname}`;
   const filePath = path.join(UPLOAD_DIR, fileName);
-  
+
   await fs.promises.writeFile(filePath, file.buffer);
-  
-  // Retourne le chemin relatif pour accéder à l'image depuis le serveur
+
   return `/uploads/${fileName}`;
+};
+
+// ==================== UTILITAIRE SLUG ====================
+
+const generateUniqueSlug = async (title) => {
+  const baseSlug = slugify(title, { lower: true, strict: true });
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await Event.findOne({ slug })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return slug;
 };
 
 // ==================== SERVICES ====================
 
-// Créer un événement
+// ✅ CRÉER UN ÉVÉNEMENT (avec slug)
 const createEvent = async (data, organizerId, file) => {
-  const eventData = { ...data, organizerId };
+  const eventData = {
+    ...data,
+    organizerId,
+    slug: await generateUniqueSlug(data.title),
+    published: false,
+  };
 
   if (file) {
     eventData.coverImage = await saveFileLocal(file);
@@ -35,40 +55,47 @@ const createEvent = async (data, organizerId, file) => {
   return event;
 };
 
-// Récupérer tous les événements d’un organisateur
+// ✅ RÉCUPÉRER TOUS LES ÉVÉNEMENTS D’UN ORGANISATEUR
 const getEventsByOrganizer = async (organizerId) => {
   return Event.find({ organizerId }).sort({ date: 1 });
 };
 
-// Récupérer un événement par ID et organisateur
+// ✅ RÉCUPÉRER UN ÉVÉNEMENT PAR ID
 const getEventById = async (id, organizerId) => {
   return Event.findOne({ _id: id, organizerId });
 };
 
-// Ajouter un message au livre d’or
+// ✅ AJOUTER MESSAGE AU LIVRE D’OR
 const addGuestBookMessage = async (eventId, { name, message }) => {
   const event = await Event.findById(eventId);
   if (!event) throw new Error('Événement non trouvé');
 
   event.guestbook = event.guestbook || [];
-  event.guestbook.push({ name, message, createdAt: new Date() });
+  event.guestbook.push({
+    guestName: name,
+    message,
+    createdAt: new Date(),
+  });
 
   await event.save();
   return event;
 };
 
-// Supprimer un événement
+// ✅ SUPPRIMER UN ÉVÉNEMENT
 const deleteEvent = async (eventId, organizerId) => {
   const event = await Event.findOneAndDelete({ _id: eventId, organizerId });
   if (!event) throw new Error('Événement non trouvé');
   return event;
 };
 
-// Mettre à jour un événement
+// ✅ METTRE À JOUR (⚠️ slug inchangé)
 const updateEvent = async (eventId, organizerId, data, file) => {
   if (file) {
     data.coverImage = await saveFileLocal(file);
   }
+
+  // ⚠️ Interdiction de modifier le slug manuellement
+  delete data.slug;
 
   const event = await Event.findOneAndUpdate(
     { _id: eventId, organizerId },
@@ -80,6 +107,25 @@ const updateEvent = async (eventId, organizerId, data, file) => {
   return event;
 };
 
+// ✅ PUBLIER UN ÉVÉNEMENT
+const publishEvent = async (eventId, organizerId) => {
+  const event = await Event.findOneAndUpdate(
+    { _id: eventId, organizerId },
+    { published: true },
+    { new: true }
+  );
+
+  if (!event) throw new Error('Événement non trouvé');
+  return event;
+};
+
+// ✅ ÉVÉNEMENT PUBLIC (LIEN D’INVITATION)
+const getPublicEventBySlug = async (slug) => {
+  const event = await Event.findOne({ slug, published: true });
+  if (!event) throw new Error('Événement non disponible');
+  return event;
+};
+
 module.exports = {
   createEvent,
   getEventsByOrganizer,
@@ -87,4 +133,6 @@ module.exports = {
   addGuestBookMessage,
   deleteEvent,
   updateEvent,
+  publishEvent,
+  getPublicEventBySlug,
 };

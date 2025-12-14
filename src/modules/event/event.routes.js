@@ -4,22 +4,27 @@ const eventController = require('./event.controller');
 const { protect } = require('../../middlewares/auth.middleware');
 const { restrictTo } = require('../../middlewares/role.middleware');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
-// Multer configuration pour stocker les fichiers en mémoire
-const upload = multer({ storage: multer.memoryStorage() });
+// ==================== MULTER ====================
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
-// Créer le dossier uploads si inexistant
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// ==================== ROUTES PUBLIQUES ====================
 
-// Middleware pour servir les fichiers statiques du dossier uploads
-router.use('/uploads', express.static(UPLOAD_DIR));
+// 🔓 Accès public à un événement via slug (invitation)
+router.get('/public/:slug', eventController.getPublicEventBySlug);
 
+// 🔓 Livre d’or public
+router.post('/public/:slug/guestbook', eventController.addGuestBookPublic);
+
+// ==================== MIDDLEWARE AUTH ====================
 router.use(protect);
 
-// Création d'événement
+// ==================== ROUTES ORGANIZER ====================
+
+// ➕ Créer un événement
 router.post(
   '/',
   restrictTo('organizer'),
@@ -27,11 +32,21 @@ router.post(
   eventController.createEvent
 );
 
-// Récupération des événements
-router.get('/', restrictTo('organizer'), eventController.getEvents);
-router.get('/:id', restrictTo('organizer'), eventController.getEvent);
+// 📄 Liste des événements de l’organisateur
+router.get(
+  '/',
+  restrictTo('organizer'),
+  eventController.getEvents
+);
 
-// Mise à jour d'un événement
+// 📄 Détails d’un événement (privé)
+router.get(
+  '/:id',
+  restrictTo('organizer'),
+  eventController.getEvent
+);
+
+// ✏️ Mettre à jour un événement
 router.put(
   '/:id',
   restrictTo('organizer'),
@@ -39,10 +54,25 @@ router.put(
   eventController.updateEvent
 );
 
-// Supprimer un événement
-router.delete('/:id', restrictTo('organizer'), eventController.deleteEvent);
+// 🗑 Supprimer un événement
+router.delete(
+  '/:id',
+  restrictTo('organizer'),
+  eventController.deleteEvent
+);
 
-// Ajouter un message au livre d'or
-router.post('/:id/guestbook', eventController.addGuestBook);
+// 📢 Publier un événement
+router.patch(
+  '/:id/publish',
+  restrictTo('organizer'),
+  eventController.publishEvent
+);
+
+// 📝 Ajouter un message au livre d’or (privé)
+router.post(
+  '/:id/guestbook',
+  restrictTo('organizer'),
+  eventController.addGuestBook
+);
 
 module.exports = router;

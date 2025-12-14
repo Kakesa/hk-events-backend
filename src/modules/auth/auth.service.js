@@ -1,4 +1,4 @@
-const Organizer = require('../organizer/organizer.model');
+const User = require('../users/users.model');
 const jwt = require('jsonwebtoken');
 
 const register = async (data) => {
@@ -10,31 +10,30 @@ const register = async (data) => {
 
   
   const emailNormalized = email.trim().toLowerCase();
-  const existingUser = await Organizer.findOne({ email: emailNormalized });
+  const existingUser = await User.findOne({ email: emailNormalized });
   if (existingUser) throw new Error('Email déjà utilisé');
 
-  const organizer = new Organizer({
+  const user = new User({
     name,
     email: emailNormalized,
     phone,
     password,
   });
 
-  await organizer.save();
+  await user.save();
 
   const token = jwt.sign(
-    { id: organizer._id, role: organizer.role },
+    { id: user._id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
   return {
-    token,
-    organizer: {
-      id: organizer._id,
-      name: organizer.name,
-      email: organizer.email,
-      role: organizer.role,
+    tuser: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
     },
   };
 };
@@ -42,25 +41,25 @@ const register = async (data) => {
 const login = async ({ email, password }) => {
   if (!email || !password) throw new Error('Email et mot de passe requis');
 
-  const organizer = await Organizer.findOne({ email: email.trim().toLowerCase() }).select('+password');
-  if (!organizer) throw new Error('Email ou mot de passe incorrect');
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+  if (!user) throw new Error('Email ou mot de passe incorrect');
 
-  const isPasswordValid = await organizer.comparePassword(password);
+  const isPasswordValid = await user.comparePassword(password);
   if (!isPasswordValid) throw new Error('Email ou mot de passe incorrect');
 
   const token = jwt.sign(
-    { id: organizer._id, role: organizer.role },
+    { id: user._id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
   return {
     token,
-    organizer: {
-      id: organizer._id,
-      name: organizer.name,
-      email: organizer.email,
-      role: organizer.role,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
     },
   };
 };
