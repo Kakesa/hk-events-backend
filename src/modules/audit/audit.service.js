@@ -1,13 +1,27 @@
 const AuditLog = require('./audit.model');
 
-const logAction = async ({ actor, action, targetUser, details, ip }) => {
+const createAudit = async ({
+  req,
+  action,
+  target,
+  before,
+  after,
+}) => {
+  if (!req.user) return;
+
   await AuditLog.create({
-    actor,
+    actor: {
+      id: req.user.id,
+      name: req.user.name,
+      role: req.user.role,
+    },
     action,
-    targetUser,
-    details,
-    ip,
+    target,
+    before,
+    after,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
   });
 };
 
-module.exports = { logAction };
+module.exports = { createAudit };

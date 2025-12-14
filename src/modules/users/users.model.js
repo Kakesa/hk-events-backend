@@ -1,25 +1,24 @@
+// src/modules/users/users.model.js
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
-    phone: { type: String },
-    password: { type: String, required: true, select: false },
-    role: { type: String, enum: ['admin', 'user'], default: 'user' }
-  },
-  { timestamps: true }
-);
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  phone: String,
+  password: { type: String, required: true, select: false },
+  role: { type: String, enum: ['admin', 'user'], default: 'user' },
+  permissions: [{ module: String, create: Boolean, read: Boolean, update: Boolean, delete: Boolean }]
+}, { timestamps: true });
 
-// 🔐 Hash du mot de passe avant sauvegarde
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+// Hash du mot de passe avant sauvegarde
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
-// 🔑 Méthode pour comparer le mot de passe
+// Vérifier le mot de passe
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

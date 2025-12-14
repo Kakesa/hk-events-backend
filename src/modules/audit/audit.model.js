@@ -1,26 +1,41 @@
 const mongoose = require('mongoose');
 
-const auditLogSchema = new mongoose.Schema(
+const auditSchema = new mongoose.Schema(
   {
     actor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
+      id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      name: String,
+      role: String,
     },
+
     action: {
       type: String,
       required: true,
+      enum: [
+        'CREATE_USER',
+        'UPDATE_USER',
+        'UPDATE_PERMISSIONS',
+        'DELETE_USER',
+        'LOGIN',
+      ],
     },
-    targetUser: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+
+    target: {
+      type: {
+        type: String, // User, Event, etc.
+      },
+      id: {
+        type: mongoose.Schema.Types.ObjectId,
+      },
     },
-    details: {
-      type: Object,
-    },
+
+    before: Object,
+    after: Object,
+
     ip: String,
+    userAgent: String,
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('AuditLog', auditLogSchema);
+module.exports = mongoose.model('AuditLog', auditSchema);

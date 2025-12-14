@@ -1,4 +1,6 @@
 const authService = require('./auth.service');
+const User = require('../users/users.model');
+const { createAudit } = require('../audit/audit.service');
 
 // ================= REGISTER =================
 const register = async (req, res, next) => {
@@ -46,19 +48,22 @@ const getAllUsers = async (req, res, next) => {
 };
 
 // ================= UPDATE PERMISSIONS =================
+
 const updatePermissions = async (req, res, next) => {
   try {
+    const before = await User.findById(req.params.id).lean();
+
     const user = await authService.updatePermissions(
       req.params.id,
       req.body.permissions
     );
 
-    await logAction({
-      actor: req.user._id,
+    await createAudit({
+      req,
       action: 'UPDATE_PERMISSIONS',
-      targetUser: user._id,
-      details: { permissions: req.body.permissions },
-      ip: req.ip,
+      target: { type: 'User', id: user._id },
+      before,
+      after: user,
     });
 
     res.status(200).json({ success: true, data: user });
@@ -66,6 +71,7 @@ const updatePermissions = async (req, res, next) => {
     next(err);
   }
 };
+
 
 // ================= DELETE USER =================
 const deleteUser = async (req, res, next) => {
@@ -85,6 +91,14 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    res.status(200).json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 
 module.exports = {
   register,
