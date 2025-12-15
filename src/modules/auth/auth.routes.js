@@ -13,13 +13,13 @@ const { registerValidation, loginValidation } = require('./auth.validation');
 const { validate } = require('../../middlewares/validate.middleware');
 const { protect } = require('../../middlewares/auth.middleware');
 const { restrictTo } = require('../../middlewares/role.middleware');
-const { checkPermission } = require('../../middlewares/permission.middleware'); // ✅ ICI
+const { checkPermission } = require('../../middlewares/permission.middleware');
 
-// ================= AUTH =================
+// AUTH
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
 
-// ================= USERS (ADMIN) =================
+// USERS (ADMIN)
 router.get(
   '/users',
   protect,
