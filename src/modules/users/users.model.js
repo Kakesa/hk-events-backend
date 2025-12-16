@@ -1,10 +1,16 @@
-// src/modules/users/users.model.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+/* =====================================================
+   PERMISSION SCHEMA
+===================================================== */
 const permissionSchema = new mongoose.Schema(
   {
-    module: { type: String, required: true },
+    module: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     create: { type: Boolean, default: false },
     read: { type: Boolean, default: false },
     update: { type: Boolean, default: false },
@@ -13,42 +19,87 @@ const permissionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/* =====================================================
+   USER SCHEMA
+===================================================== */
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
+      index: true,
     },
-    phone: { type: String, default: '' },
-    password: { type: String, required: true, select: false },
-    role: { type: String, enum: ['admin', 'user'], default: 'user' },
+
+    phone: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+      select: false, // 🔒 jamais exposer
+    },
+
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      default: 'user',
+      index: true,
+    },
+
     permissions: {
       type: [permissionSchema],
       default: [],
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    versionKey: false,
+  }
 );
 
 /* =====================================================
    HASH PASSWORD (FIX CRITIQUE)
 ===================================================== */
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+userSchema.pre('save', async function (next) {
+  try {
+    // ⚠️ IMPORTANT : ne re-hasher que si modifié
+    if (!this.isModified('password')) {
+      return next();
+    }
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 /* =====================================================
    COMPARE PASSWORD
 ===================================================== */
 userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!candidatePassword || !this.password) {
+    return false;
+  }
+
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+/* =====================================================
+   EXPORT
+===================================================== */
 module.exports = mongoose.model('User', userSchema);

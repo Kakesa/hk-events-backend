@@ -3,76 +3,31 @@ const router = express.Router();
 const eventController = require('./event.controller');
 const { protect } = require('../../middlewares/auth.middleware');
 const { restrictTo } = require('../../middlewares/role.middleware');
+const { checkPermission } = require('../../middlewares/permission.middleware');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
-// ==================== MULTER ====================
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`)
 });
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// ==================== ROUTES PUBLIQUES ====================
-
-// 🔓 Accès public à un événement via slug (invitation)
 router.get('/public/:slug', eventController.getPublicEventBySlug);
-
-// 🔓 Livre d’or public
 router.post('/public/:slug/guestbook', eventController.addGuestBookPublic);
 
-// ==================== MIDDLEWARE AUTH ====================
 router.use(protect);
 
-// ==================== ROUTES ORGANIZER ====================
-
-// ➕ Créer un événement
-router.post(
-  '/',
-  restrictTo('organizer'),
-  upload.single('coverImage'),
-  eventController.createEvent
-);
-
-// 📄 Liste des événements de l’organisateur
-router.get(
-  '/',
-  restrictTo('organizer'),
-  eventController.getEvents
-);
-
-// 📄 Détails d’un événement (privé)
-router.get(
-  '/:id',
-  restrictTo('organizer'),
-  eventController.getEvent
-);
-
-// ✏️ Mettre à jour un événement
-router.put(
-  '/:id',
-  restrictTo('organizer'),
-  upload.single('coverImage'),
-  eventController.updateEvent
-);
-
-// 🗑 Supprimer un événement
-router.delete(
-  '/:id',
-  restrictTo('organizer'),
-  eventController.deleteEvent
-);
-
-// 📢 Publier un événement
-router.patch(
-  '/:id/publish',
-  restrictTo('organizer'),
-  eventController.publishEvent
-);
-
-// 📝 Ajouter un message au livre d’or (privé)
-router.post(
-  '/:id/guestbook',
-  restrictTo('organizer'),
-  eventController.addGuestBook
-);
+router.post('/', restrictTo('admin', 'user'), checkPermission('events', 'create'), upload.single('coverImage'), eventController.createEvent);
+router.get('/', restrictTo('admin', 'user'), checkPermission('events', 'read'), eventController.getEvents);
+router.get('/:id', restrictTo('admin', 'user'), checkPermission('events', 'read'), eventController.getEvent);
+router.put('/:id', restrictTo('admin', 'user'), checkPermission('events', 'update'), upload.single('coverImage'), eventController.updateEvent);
+router.delete('/:id', restrictTo('admin', 'user'), checkPermission('events', 'delete'), eventController.deleteEvent);
+router.patch('/:id/publish', restrictTo('admin', 'user'), checkPermission('events', 'update'), eventController.publishEvent);
+router.post('/:id/guestbook', restrictTo('admin', 'user'), checkPermission('events', 'update'), eventController.addGuestBook);
 
 module.exports = router;

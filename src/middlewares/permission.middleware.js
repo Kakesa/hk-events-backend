@@ -1,14 +1,19 @@
 const checkPermission = (module, action) => {
   return (req, res, next) => {
-    if (req.user.role === 'admin') return next();
 
-    const allowed =
-      req.user.permissions?.[module]?.[action];
+    // 🔥 ADMIN = accès total
+    if (req.user.role === 'admin') {
+      return next();
+    }
 
-    if (!allowed) {
+    const permission = req.user.permissions?.find(
+      (p) => p.module === module
+    );
+
+    if (!permission || permission[action] !== true) {
       return res.status(403).json({
         success: false,
-        message: 'Permission refusée',
+        message: 'Accès refusé (droits insuffisants)',
       });
     }
 

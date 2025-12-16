@@ -8,10 +8,10 @@ const { errorHandler } = require('./middlewares/error.middleware');
 
 const app = express();
 
-// 🔹 DB
+// 🔹 Connexion à la DB
 connectDB();
 
-// 🔹 CORS (SUFFISANT pour gérer OPTIONS automatiquement)
+// 🔹 CORS
 app.use(
   cors({
     origin: 'http://localhost:8080',
@@ -21,13 +21,13 @@ app.use(
   })
 );
 
-// 🔹 Body parser
+// 🔹 Parser JSON pour **toutes les routes**
 app.use(express.json());
 
-// 🔹 Routes
+// 🔹 Routes principales
 routes(app);
 
-// 🔹 Error handler
+// 🔹 Middleware de gestion des erreurs
 app.use(errorHandler);
 
 module.exports = app;

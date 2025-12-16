@@ -4,8 +4,16 @@ const slugify = require('slugify');
 // ===================== GUESTBOOK =====================
 const GuestbookSchema = new mongoose.Schema(
   {
-    guestName: { type: String, required: true },
-    message: { type: String, required: true },
+    guestName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true,
+    },
   },
   { timestamps: true }
 );
@@ -13,29 +21,60 @@ const GuestbookSchema = new mongoose.Schema(
 // ===================== EVENT =====================
 const EventSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    type: { type: String, required: true }, // wedding, birthday...
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    description: String,
+    type: {
+      type: String,
+      required: true, // wedding, birthday, conference...
+    },
 
-    date: { type: Date, required: true },
+    description: {
+      type: String,
+      trim: true,
+    },
+
+    date: {
+      type: Date,
+      required: true,
+    },
+
     startTime: String,
     endTime: String,
 
-    location: { type: String, required: true },
+    location: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    organizerId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organizer',
+      ref: 'User',
       required: true,
     },
 
     coverImage: String,
-    theme: { type: String, default: 'elegant' },
 
-    published: { type: Boolean, default: false },
+    theme: {
+      type: String,
+      default: 'elegant',
+    },
 
-    slug: { type: String, unique: true },
+    published: {
+      type: Boolean,
+      default: false,
+    },
+
+    slug: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+
     invitationLink: String,
 
     guestbook: [GuestbookSchema],
@@ -43,8 +82,9 @@ const EventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ===================== SLUG AUTO =====================
-EventSchema.pre('save', function (next) {
+// ===================== SLUG & INVITATION LINK =====================
+EventSchema.pre('save', async function () {
+  // Générer le slug uniquement à la création
   if (!this.slug) {
     this.slug = slugify(`${this.title}-${Date.now()}`, {
       lower: true,
@@ -52,14 +92,13 @@ EventSchema.pre('save', function (next) {
     });
   }
 
+  // Générer le lien d’invitation
   if (!this.invitationLink) {
     this.invitationLink = `/invite/${this.slug}`;
   }
-
-  next();
 });
 
-// ===================== _id → id =====================
+// ===================== _id → id (API propre) =====================
 EventSchema.set('toJSON', {
   transform: (_, ret) => {
     ret.id = ret._id;

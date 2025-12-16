@@ -7,7 +7,6 @@ const { createAudit } = require('../audit/audit.service');
 ===================================================== */
 const register = async (req, res, next) => {
   try {
-    // Le service retourne { token, user }
     const { token, user } = await authService.register(req.body);
 
     res.status(201).json({
@@ -27,6 +26,9 @@ const register = async (req, res, next) => {
 ===================================================== */
 const login = async (req, res, next) => {
   try {
+    // DEBUG utile (à supprimer en prod)
+    console.log('LOGIN BODY:', req.body);
+
     const { token, user } = await authService.login(req.body);
 
     res.status(200).json({
@@ -49,7 +51,6 @@ const getAllUsers = async (req, res, next) => {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    // Tout est géré par le service
     const result = await authService.getAllUsers(page, limit);
 
     res.status(200).json({
@@ -68,6 +69,13 @@ const getAllUsers = async (req, res, next) => {
 const updatePermissions = async (req, res, next) => {
   try {
     const before = await User.findById(req.params.id).lean();
+
+    if (!before) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur introuvable',
+      });
+    }
 
     const user = await authService.updatePermissions(
       req.params.id,
@@ -100,11 +108,18 @@ const deleteUser = async (req, res, next) => {
     if (req.user && req.user._id.toString() === req.params.id) {
       return res.status(403).json({
         success: false,
-        message: 'Vous ne pouvez pas vous supprimer',
+        message: 'Vous ne pouvez pas vous supprimer vous-même',
       });
     }
 
     const before = await User.findById(req.params.id).lean();
+
+    if (!before) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur introuvable',
+      });
+    }
 
     await authService.deleteUser(req.params.id);
 
@@ -118,7 +133,7 @@ const deleteUser = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Utilisateur supprimé',
+      message: 'Utilisateur supprimé avec succès',
     });
   } catch (err) {
     next(err);

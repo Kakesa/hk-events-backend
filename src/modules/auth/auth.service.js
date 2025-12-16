@@ -2,6 +2,23 @@ const User = require('../users/users.model');
 const jwt = require('jsonwebtoken');
 
 /* =====================================================
+   HELPERS
+===================================================== */
+const generateToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET non défini');
+  }
+
+  return jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+};
+
+const normalizeEmail = (email) => email.trim().toLowerCase();
+
+/* =====================================================
    REGISTER
 ===================================================== */
 const register = async (data) => {
@@ -14,15 +31,12 @@ const register = async (data) => {
     permissions,
   } = data;
 
+  // 🔒 Sécurité : validation minimale (en plus d’express-validator)
   if (!name || !email || !password) {
     throw new Error('Champs obligatoires manquants');
   }
 
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET non défini');
-  }
-
-  const emailNormalized = email.trim().toLowerCase();
+  const emailNormalized = normalizeEmail(email);
 
   const existingUser = await User.findOne({ email: emailNormalized });
   if (existingUser) {
@@ -36,18 +50,14 @@ const register = async (data) => {
     name,
     email: emailNormalized,
     phone,
-    password, // hash via le model
+    password, // hash géré par le model (pre save)
     role: safeRole,
-    permissions: permissions || [],
+    permissions: Array.isArray(permissions) ? permissions : [],
   });
 
   await user.save();
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+  const token = generateToken(user);
 
   return {
     token,
@@ -69,13 +79,10 @@ const login = async ({ email, password }) => {
     throw new Error('Email et mot de passe requis');
   }
 
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET non défini');
-  }
+  const emailNormalized = normalizeEmail(email);
 
-  const user = await User.findOne({
-    email: email.trim().toLowerCase(),
-  }).select('+password');
+  const user = await User.findOne({ email: emailNormalized })
+    .select('+password');
 
   if (!user) {
     throw new Error('Email ou mot de passe incorrect');
@@ -86,11 +93,7 @@ const login = async ({ email, password }) => {
     throw new Error('Email ou mot de passe incorrect');
   }
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+  const token = generateToken(user);
 
   return {
     token,
@@ -108,13 +111,15 @@ const login = async ({ email, password }) => {
    GET ALL USERS (ADMIN)
 ===================================================== */
 const getAllUsers = async (page = 1, limit = 10) => {
-  const skip = (page - 1) * limit;
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.max(1, limit);
+  const skip = (safePage - 1) * safeLimit;
 
   const [users, total] = await Promise.all([
     User.find()
       .select('-password')
       .skip(skip)
-      .limit(limit)
+      .limit(safeLimit)
       .sort({ createdAt: -1 }),
     User.countDocuments(),
   ]);
@@ -123,9 +128,9 @@ const getAllUsers = async (page = 1, limit = 10) => {
     data: users,
     pagination: {
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     },
   };
 };
@@ -134,6 +139,10 @@ const getAllUsers = async (page = 1, limit = 10) => {
    UPDATE PERMISSIONS
 ===================================================== */
 const updatePermissions = async (userId, permissions) => {
+  if (!Array.isArray(permissions)) {
+    throw new Error('Permissions invalides');
+  }
+
   const user = await User.findByIdAndUpdate(
     userId,
     { permissions },

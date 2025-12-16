@@ -4,122 +4,73 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const slugify = require('slugify');
 
-// ==================== UPLOAD LOCAL ====================
-
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const saveFileLocal = async (file) => {
-  if (!file || !file.buffer) throw new Error('Fichier invalide');
-
+  if (!file) throw new Error('Fichier invalide');
   const fileName = `${uuidv4()}-${file.originalname}`;
   const filePath = path.join(UPLOAD_DIR, fileName);
-
-  await fs.promises.writeFile(filePath, file.buffer);
-
+  if (file.buffer) await fs.promises.writeFile(filePath, file.buffer);
+  else if (file.path) await fs.promises.copyFile(file.path, filePath);
+  else throw new Error('Fichier invalide');
   return `/uploads/${fileName}`;
 };
-
-// ==================== UTILITAIRE SLUG ====================
 
 const generateUniqueSlug = async (title) => {
   const baseSlug = slugify(title, { lower: true, strict: true });
   let slug = baseSlug;
   let counter = 1;
-
-  while (await Event.findOne({ slug })) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
+  while (await Event.exists({ slug })) {
+    slug = `${baseSlug}-${counter++}`;
   }
-
   return slug;
 };
 
-// ==================== SERVICES ====================
+const createEvent = async (data, userId, file) => {
+  const eventData = { ...data, userId, published: false, slug: await generateUniqueSlug(data.title) };
+  if (file) eventData.coverImage = await saveFileLocal(file);
+  return Event.create(eventData);
+};
 
-// ✅ CRÉER UN ÉVÉNEMENT (avec slug)
-const createEvent = async (data, organizerId, file) => {
-  const eventData = {
-    ...data,
-    organizerId,
-    slug: await generateUniqueSlug(data.title),
-    published: false,
-  };
-
-  if (file) {
-    eventData.coverImage = await saveFileLocal(file);
-  }
-
-  const event = new Event(eventData);
-  await event.save();
+const getEventsByUser = async (userId) => Event.find({ userId }).sort({ createdAt: -1 });
+const getEventById = async (eventId, userId) => {
+  const event = await Event.findOne({ _id: eventId, userId });
+  if (!event) throw new Error('Événement non trouvé');
   return event;
 };
-
-// ✅ RÉCUPÉRER TOUS LES ÉVÉNEMENTS D’UN ORGANISATEUR
-const getEventsByOrganizer = async (organizerId) => {
-  return Event.find({ organizerId }).sort({ date: 1 });
-};
-
-// ✅ RÉCUPÉRER UN ÉVÉNEMENT PAR ID
-const getEventById = async (id, organizerId) => {
-  return Event.findOne({ _id: id, organizerId });
-};
-
-// ✅ AJOUTER MESSAGE AU LIVRE D’OR
 const addGuestBookMessage = async (eventId, { name, message }) => {
   const event = await Event.findById(eventId);
   if (!event) throw new Error('Événement non trouvé');
-
-  event.guestbook = event.guestbook || [];
-  event.guestbook.push({
-    guestName: name,
-    message,
-    createdAt: new Date(),
-  });
-
+  event.guestbook.push({ guestName: name, message });
   await event.save();
   return event;
 };
-
-// ✅ SUPPRIMER UN ÉVÉNEMENT
-const deleteEvent = async (eventId, organizerId) => {
-  const event = await Event.findOneAndDelete({ _id: eventId, organizerId });
+const addGuestBookBySlug = async (slug, { guestName, message }) => {
+  const event = await Event.findOne({ slug, published: true });
   if (!event) throw new Error('Événement non trouvé');
+  event.guestbook.push({ guestName, message });
+  await event.save();
   return event;
 };
-
-// ✅ METTRE À JOUR (⚠️ slug inchangé)
-const updateEvent = async (eventId, organizerId, data, file) => {
-  if (file) {
-    data.coverImage = await saveFileLocal(file);
-  }
-
-  // ⚠️ Interdiction de modifier le slug manuellement
+const updateEvent = async (eventId, userId, data, file) => {
+  if (file) data.coverImage = await saveFileLocal(file);
   delete data.slug;
-
-  const event = await Event.findOneAndUpdate(
-    { _id: eventId, organizerId },
-    { ...data, updatedAt: new Date() },
-    { new: true }
-  );
-
+  delete data.invitationLink;
+  const event = await Event.findOneAndUpdate({ _id: eventId, userId }, data, { new: true });
   if (!event) throw new Error('Événement non trouvé');
   return event;
 };
-
-// ✅ PUBLIER UN ÉVÉNEMENT
-const publishEvent = async (eventId, organizerId) => {
-  const event = await Event.findOneAndUpdate(
-    { _id: eventId, organizerId },
-    { published: true },
-    { new: true }
-  );
-
+const deleteEvent = async (eventId, userId) => {
+  const event = await Event.findOneAndDelete({ _id: eventId, userId });
   if (!event) throw new Error('Événement non trouvé');
   return event;
 };
-
-// ✅ ÉVÉNEMENT PUBLIC (LIEN D’INVITATION)
+const publishEvent = async (eventId, userId) => {
+  const event = await Event.findOneAndUpdate({ _id: eventId, userId }, { published: true }, { new: true });
+  if (!event) throw new Error('Événement non trouvé');
+  return event;
+};
 const getPublicEventBySlug = async (slug) => {
   const event = await Event.findOne({ slug, published: true });
   if (!event) throw new Error('Événement non disponible');
@@ -128,11 +79,12 @@ const getPublicEventBySlug = async (slug) => {
 
 module.exports = {
   createEvent,
-  getEventsByOrganizer,
+  getEventsByUser,
   getEventById,
   addGuestBookMessage,
-  deleteEvent,
+  addGuestBookBySlug,
   updateEvent,
+  deleteEvent,
   publishEvent,
   getPublicEventBySlug,
 };

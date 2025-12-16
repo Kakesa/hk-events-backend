@@ -23,7 +23,7 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Utilisateur invalide' });
     }
 
-    req.user = user; // 🔥 injecté partout
+    req.user = user; 
     next();
   } catch (error) {
     res.status(401).json({ message: 'Token invalide' });
