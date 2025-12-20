@@ -13,6 +13,7 @@ const {
   addGuestBookPublic,
   createEvent,
   getEvents,
+  getAllEvents,
   getEvent,
   updateEvent,
   deleteEvent,
@@ -24,22 +25,17 @@ const {
    UPLOAD CONFIGURATION
 ======================= */
 const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) =>
-    cb(
-      null,
-      `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`
-    ),
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
 });
 
 /* =======================
@@ -58,11 +54,19 @@ router.post(
   '/',
   restrictTo('admin', 'user'),
   checkPermission('events', 'create'),
-  upload.single('coverImage'), // 🔹 Multer parse le fichier coverImage
+  upload.single('coverImage'),
   createEvent
 );
 
-// GET ALL EVENTS
+// GET ALL EVENTS (doit être avant /:id pour éviter le Cast to ObjectId)
+router.get(
+  '/all',
+  restrictTo('admin', 'user'),
+  checkPermission('events', 'read'),
+  getAllEvents
+);
+
+// GET EVENTS (seulement ceux de l’utilisateur connecté)
 router.get(
   '/',
   restrictTo('admin', 'user'),

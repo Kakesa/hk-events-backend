@@ -46,6 +46,23 @@ const getEvents = async (req, res, next) => {
 };
 
 /* =======================
+   GET ALL EVENTS
+======================= */
+const getAllEvents = async (req, res, next) => {
+  try {
+    const events = await eventService.getAllEvents(); // récupère tous les événements
+    const mappedEvents = events.map((e) => ({
+      ...e.toObject(),
+      id: e._id.toString(),
+    }));
+
+    res.json({ success: true, data: mappedEvents });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =======================
    GET SINGLE EVENT
 ======================= */
 const getEvent = async (req, res, next) => {
@@ -185,6 +202,7 @@ const addGuestBook = async (req, res, next) => {
 module.exports = {
   createEvent,
   getEvents,
+  getAllEvents,  // nouvelle fonction
   getEvent,
   updateEvent,
   deleteEvent,
