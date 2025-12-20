@@ -21,8 +21,10 @@ app.use(
   })
 );
 
-// 🔹 Parser JSON pour **toutes les routes**
-app.use(express.json());
+// 🔹 Parser JSON uniquement pour les requêtes application/json
+// ⚠️ Les routes multipart/form-data ne passeront pas ici
+app.use(express.json({ type: 'application/json' }));
+app.use(express.urlencoded({ extended: true }));
 
 // 🔹 Routes principales
 routes(app);

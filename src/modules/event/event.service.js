@@ -7,84 +7,148 @@ const slugify = require('slugify');
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+// =======================
+// FILE HANDLING
+// =======================
 const saveFileLocal = async (file) => {
-  if (!file) throw new Error('Fichier invalide');
+  if (!file) return null;
+
   const fileName = `${uuidv4()}-${file.originalname}`;
   const filePath = path.join(UPLOAD_DIR, fileName);
+
   if (file.buffer) await fs.promises.writeFile(filePath, file.buffer);
   else if (file.path) await fs.promises.copyFile(file.path, filePath);
   else throw new Error('Fichier invalide');
+
   return `/uploads/${fileName}`;
 };
 
+// =======================
+// SLUG GENERATOR
+// =======================
 const generateUniqueSlug = async (title) => {
   const baseSlug = slugify(title, { lower: true, strict: true });
   let slug = baseSlug;
   let counter = 1;
+
   while (await Event.exists({ slug })) {
     slug = `${baseSlug}-${counter++}`;
   }
+
   return slug;
 };
 
-const createEvent = async (data, userId, file) => {
-  const eventData = { ...data, userId, published: false, slug: await generateUniqueSlug(data.title) };
-  if (file) eventData.coverImage = await saveFileLocal(file);
-  return Event.create(eventData);
+// =======================
+// MAPPER POUR FRONT
+// =======================
+const mapEvent = (event) => {
+  const obj = event.toObject();
+  obj.id = obj._id.toString();
+  return obj;
 };
 
-const getEventsByUser = async (userId) => Event.find({ userId }).sort({ createdAt: -1 });
+// =======================
+// CREATE EVENT
+// =======================
+const createEvent = async (eventData, file) => {
+  const data = {
+    ...eventData,
+    published: false,
+    slug: await generateUniqueSlug(eventData.title),
+  };
+
+  if (file) data.coverImage = await saveFileLocal(file);
+
+  const event = await Event.create(data);
+  return mapEvent(event);
+};
+
+// =======================
+// READ EVENTS
+// =======================
+const getEventsByUser = async (userId) => {
+  const events = await Event.find({ userId }).sort({ createdAt: -1 });
+  return events.map(mapEvent);
+};
+
 const getEventById = async (eventId, userId) => {
   const event = await Event.findOne({ _id: eventId, userId });
   if (!event) throw new Error('Événement non trouvé');
-  return event;
+  return mapEvent(event);
 };
-const addGuestBookMessage = async (eventId, { name, message }) => {
-  const event = await Event.findById(eventId);
-  if (!event) throw new Error('Événement non trouvé');
-  event.guestbook.push({ guestName: name, message });
-  await event.save();
-  return event;
-};
-const addGuestBookBySlug = async (slug, { guestName, message }) => {
-  const event = await Event.findOne({ slug, published: true });
-  if (!event) throw new Error('Événement non trouvé');
-  event.guestbook.push({ guestName, message });
-  await event.save();
-  return event;
-};
+
+// =======================
+// UPDATE EVENT
+// =======================
 const updateEvent = async (eventId, userId, data, file) => {
   if (file) data.coverImage = await saveFileLocal(file);
   delete data.slug;
   delete data.invitationLink;
+
   const event = await Event.findOneAndUpdate({ _id: eventId, userId }, data, { new: true });
   if (!event) throw new Error('Événement non trouvé');
-  return event;
+  return mapEvent(event);
 };
+
+// =======================
+// DELETE EVENT
+// =======================
 const deleteEvent = async (eventId, userId) => {
   const event = await Event.findOneAndDelete({ _id: eventId, userId });
   if (!event) throw new Error('Événement non trouvé');
-  return event;
+  return mapEvent(event);
 };
+
+// =======================
+// PUBLISH EVENT
+// =======================
 const publishEvent = async (eventId, userId) => {
   const event = await Event.findOneAndUpdate({ _id: eventId, userId }, { published: true }, { new: true });
   if (!event) throw new Error('Événement non trouvé');
-  return event;
+  return mapEvent(event);
 };
+
+// =======================
+// PUBLIC EVENT
+// =======================
 const getPublicEventBySlug = async (slug) => {
   const event = await Event.findOne({ slug, published: true });
   if (!event) throw new Error('Événement non disponible');
-  return event;
+  return mapEvent(event);
 };
 
+// =======================
+// GUESTBOOK
+// =======================
+const addGuestBookPublic = async (slug, { guestName, message }) => {
+  const event = await Event.findOne({ slug, published: true });
+  if (!event) throw new Error('Événement non trouvé');
+
+  event.guestbook.push({ guestName, message });
+  await event.save();
+  return mapEvent(event);
+};
+
+const addGuestBook = async (eventId, userId, { guestName, message }) => {
+  const event = await Event.findOne({ _id: eventId, userId });
+  if (!event) throw new Error('Événement non trouvé');
+
+  event.guestbook.push({ guestName, message });
+  await event.save();
+  return mapEvent(event);
+};
+
+// =======================
+// EXPORTS
+// =======================
 module.exports = {
   createEvent,
   getEventsByUser,
   getEventById,
-  addGuestBookMessage,
-  addGuestBookBySlug,
   updateEvent,
   deleteEvent,
   publishEvent,
   getPublicEventBySlug,
+  addGuestBookPublic,
+  addGuestBook,
 };
