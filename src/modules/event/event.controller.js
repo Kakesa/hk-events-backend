@@ -17,10 +17,7 @@ const createEvent = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: 'Événement créé',
-      data: {
-        ...event.toObject(),
-        id: event._id.toString(),
-      },
+      data: event, // ✅ déjà prêt
     });
   } catch (err) {
     next(err);
@@ -34,12 +31,10 @@ const getEvents = async (req, res, next) => {
   try {
     const events = await eventService.getEventsByUser(req.user.id);
 
-    const mappedEvents = events.map((e) => ({
-      ...e.toObject(),
-      id: e._id.toString(),
-    }));
-
-    res.json({ success: true, data: mappedEvents });
+    res.json({
+      success: true,
+      data: events, // ✅ DIRECT
+    });
   } catch (err) {
     next(err);
   }
@@ -50,13 +45,12 @@ const getEvents = async (req, res, next) => {
 ======================= */
 const getAllEvents = async (req, res, next) => {
   try {
-    const events = await eventService.getAllEvents(); // récupère tous les événements
-    const mappedEvents = events.map((e) => ({
-      ...e.toObject(),
-      id: e._id.toString(),
-    }));
+    const events = await eventService.getAllEvents();
 
-    res.json({ success: true, data: mappedEvents });
+    res.json({
+      success: true,
+      data: events, // ✅ DIRECT
+    });
   } catch (err) {
     next(err);
   }
@@ -67,14 +61,14 @@ const getAllEvents = async (req, res, next) => {
 ======================= */
 const getEvent = async (req, res, next) => {
   try {
-    const event = await eventService.getEventById(req.params.id, req.user.id);
+    const event = await eventService.getEventById(
+      req.params.id,
+      req.user.id
+    );
 
     res.json({
       success: true,
-      data: {
-        ...event.toObject(),
-        id: event._id.toString(),
-      },
+      data: event, // ✅ DIRECT
     });
   } catch (err) {
     next(err);
@@ -87,6 +81,7 @@ const getEvent = async (req, res, next) => {
 const updateEvent = async (req, res, next) => {
   try {
     const file = req.file || null;
+
     const event = await eventService.updateEvent(
       req.params.id,
       req.user.id,
@@ -97,10 +92,7 @@ const updateEvent = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Événement mis à jour',
-      data: {
-        ...event.toObject(),
-        id: event._id.toString(),
-      },
+      data: event, // ✅ DIRECT
     });
   } catch (err) {
     next(err);
@@ -113,6 +105,7 @@ const updateEvent = async (req, res, next) => {
 const deleteEvent = async (req, res, next) => {
   try {
     await eventService.deleteEvent(req.params.id, req.user.id);
+
     res.json({
       success: true,
       message: 'Événement supprimé',
@@ -127,15 +120,15 @@ const deleteEvent = async (req, res, next) => {
 ======================= */
 const publishEvent = async (req, res, next) => {
   try {
-    const event = await eventService.publishEvent(req.params.id, req.user.id);
+    const event = await eventService.publishEvent(
+      req.params.id,
+      req.user.id
+    );
 
     res.json({
       success: true,
       message: 'Événement publié',
-      data: {
-        ...event.toObject(),
-        id: event._id.toString(),
-      },
+      data: event,
       invitationLink: `${process.env.FRONTEND_URL}${event.invitationLink || ''}`,
     });
   } catch (err) {
@@ -144,7 +137,7 @@ const publishEvent = async (req, res, next) => {
 };
 
 /* =======================
-   PUBLIC EVENT (NO AUTH)
+   PUBLIC EVENT
 ======================= */
 const getPublicEventBySlug = async (req, res, next) => {
   try {
@@ -152,10 +145,7 @@ const getPublicEventBySlug = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: {
-        ...event.toObject(),
-        id: event._id.toString(),
-      },
+      data: event, // ✅ DIRECT
     });
   } catch (err) {
     next(err);
@@ -167,11 +157,14 @@ const getPublicEventBySlug = async (req, res, next) => {
 ======================= */
 const addGuestBookPublic = async (req, res, next) => {
   try {
-    const guest = await eventService.addGuestBookPublic(req.params.slug, req.body);
+    const guest = await eventService.addGuestBookPublic(
+      req.params.slug,
+      req.body
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Message ajouté au livre d\'or public',
+      message: "Message ajouté au livre d'or public",
       data: guest,
     });
   } catch (err) {
@@ -184,11 +177,15 @@ const addGuestBookPublic = async (req, res, next) => {
 ======================= */
 const addGuestBook = async (req, res, next) => {
   try {
-    const guest = await eventService.addGuestBook(req.params.id, req.user.id, req.body);
+    const guest = await eventService.addGuestBook(
+      req.params.id,
+      req.user.id,
+      req.body
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Message ajouté au livre d\'or privé',
+      message: "Message ajouté au livre d'or privé",
       data: guest,
     });
   } catch (err) {
@@ -202,7 +199,7 @@ const addGuestBook = async (req, res, next) => {
 module.exports = {
   createEvent,
   getEvents,
-  getAllEvents,  // nouvelle fonction
+  getAllEvents,
   getEvent,
   updateEvent,
   deleteEvent,

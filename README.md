@@ -21,7 +21,7 @@ This is the backend service for the HK Events application, which manages event d
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/hk-events-backend.git
+   git clone https://github.com/Kakesa/hk-events-backend.git
 2. Navigate to the project directory:
    ```bash
     cd hk-events-backend
@@ -30,11 +30,11 @@ This is the backend service for the HK Events application, which manages event d
     npm install
 4. Create a `.env` file in the root directory and add your environment variables:
    ```env   
-    PORT=3000
+    PORT=5000
     MONGODB_URI=mongodb://localhost:27017/hk-events
 5. Start the server:
     ```bash  
      npm start
-The server will be running at `http://localhost:3000`.
+The server will be running at `http://localhost:500`.
 ## API Documentation
 Refer to the [API Documentation](docs/api.md) for detailed information on available endpoints and their usage.
