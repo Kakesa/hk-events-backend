@@ -4,7 +4,7 @@ const Guest = require('./guest.model');
 
 // Créer un guest
 exports.createGuest = async (req, res) => {
-  console.log('POST /api/guests reçu', req.body)
+  // console.log('POST /api/guests reçu', req.body)
   try {
     const guest = await Guest.create(req.body);
     res.status(201).json({ success: true, data: guest });
