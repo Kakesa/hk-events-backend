@@ -18,6 +18,9 @@ const { checkPermission } = require('../../middlewares/permission.middleware');
 // AUTH
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
+router.get('/me', protect, (req, res) => {
+  res.json({ success: true, data: req.user });
+});
 
 // USERS (ADMIN)
 router.get(

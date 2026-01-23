@@ -7,26 +7,35 @@ const protect = async (req, res, next) => {
 
     if (
       req.headers.authorization &&
-      req.headers.authorization.startsWith('Bearer')
+      req.headers.authorization.startsWith('Bearer ')
     ) {
       token = req.headers.authorization.split(' ')[1];
     }
 
     if (!token) {
-      return res.status(401).json({ message: 'Non autorisé (token manquant)' });
+      return res.status(401).json({
+        success: false,
+        message: 'Non autorisé (token manquant)',
+      });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select('-password');
     if (!user) {
-      return res.status(401).json({ message: 'Utilisateur invalide' });
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur invalide',
+      });
     }
 
-    req.user = user; 
+    req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token invalide' });
+    return res.status(401).json({
+      success: false,
+      message: 'Token invalide ou expiré',
+    });
   }
 };
 

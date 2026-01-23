@@ -27,7 +27,7 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     // DEBUG utile (à supprimer en prod)
-    console.log('LOGIN BODY:', req.body);
+    // console.log('LOGIN BODY:', req.body);
 
     const { token, user } = await authService.login(req.body);
 
@@ -42,6 +42,21 @@ const login = async (req, res, next) => {
     next(err);
   }
 };
+
+/* =====================================================
+   ME (CURRENT USER)
+===================================================== */
+const me = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: req.user,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 
 /* =====================================================
    GET ALL USERS (ADMIN)
@@ -146,6 +161,7 @@ const deleteUser = async (req, res, next) => {
 module.exports = {
   register,
   login,
+  me,
   getAllUsers,
   updatePermissions,
   deleteUser,
