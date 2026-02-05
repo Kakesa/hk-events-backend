@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Analytics = require('../analytics/analytics.model'); // Assure-toi que le modèle existe
+const Analytics = require('../analytics/analytics.model');
 
 const guestSchema = new mongoose.Schema(
   {
@@ -7,35 +7,83 @@ const guestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Event',
       required: true,
+      index: true,
     },
-    name: { type: String, required: true },
-    email: { type: String },
-    phone: { type: String },
+
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+    },
+
+    phone: {
+      type: String,
+      trim: true,
+    },
+
     status: {
       type: String,
       enum: ['invited', 'confirmed', 'declined', 'pending'],
       default: 'invited',
+      index: true,
     },
-    drinkPreference: String,
-    qrCode: String,
+
+    // RSVP DATA
+    drinkPreference: {
+      type: String,
+      enum: ['champagne', 'wine', 'cocktail', 'beer', 'soft', 'none', ''],
+      default: '',
+    },
+
+    dietaryRestrictions: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
+    message: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
+    respondedAt: {
+      type: Date,
+    },
+
+    // QR / RSVP
+    qrCode: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
-// Hook post-save pour mettre à jour les stats Analytics
-guestSchema.post('save', async function(doc) {
+/* =====================================================
+   ANALYTICS AUTO UPDATE (POST SAVE)
+===================================================== */
+guestSchema.post('save', async function (doc) {
   try {
     const analytics = await Analytics.findOne({ eventId: doc.eventId });
     if (!analytics) return;
 
-    // Compter les statuts
-    const totalConfirmed = await mongoose.model('Guest').countDocuments({ eventId: doc.eventId, status: 'confirmed' });
-    const totalDeclined = await mongoose.model('Guest').countDocuments({ eventId: doc.eventId, status: 'declined' });
-    const totalPending = await mongoose.model('Guest').countDocuments({ eventId: doc.eventId, status: 'pending' });
+    const Guest = mongoose.model('Guest');
 
-    analytics.totalConfirmed = totalConfirmed;
-    analytics.totalDeclined = totalDeclined;
-    analytics.totalPending = totalPending;
+    const [confirmed, declined, pending] = await Promise.all([
+      Guest.countDocuments({ eventId: doc.eventId, status: 'confirmed' }),
+      Guest.countDocuments({ eventId: doc.eventId, status: 'declined' }),
+      Guest.countDocuments({ eventId: doc.eventId, status: 'pending' }),
+    ]);
+
+    analytics.totalConfirmed = confirmed;
+    analytics.totalDeclined = declined;
+    analytics.totalPending = pending;
     analytics.lastUpdated = new Date();
 
     await analytics.save();

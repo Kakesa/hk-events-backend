@@ -4,6 +4,7 @@ const auditRoutes = require('./modules/audit/audit.routes');
 const guestRoutes = require('./modules/guest/guest.routes');
 const analyticsRoutes = require('./modules/analytics/analytics.routes');
 const invitationRoutes = require('./modules/invitation/invitation.routes');
+const rsvpRoutes = require('./modules/rsvp/rsvp.routes');
 
 module.exports = (app) => {
   app.use('/api/auth', authRoutes);
@@ -12,4 +13,5 @@ module.exports = (app) => {
   app.use('/api/guests', guestRoutes); 
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/invitations', invitationRoutes);
+  app.use('/api/public', rsvpRoutes);
 };
