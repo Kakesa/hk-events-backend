@@ -16,14 +16,30 @@ const invitationSchema = new mongoose.Schema(
 
     distributionMethod: {
       type: String,
-      enum: ['whatsapp', 'sms', 'email'],
+      enum: ['email', 'whatsapp', 'sms'],
       required: true,
     },
 
-    templateUrl: String,
-    themeColor: String,
+    templateUrl: {
+      type: String,
+      default: null,
+    },
 
-    sentAt: Date,
+    themeColor: {
+      type: String,
+      default: null,
+    },
+
+    sentAt: {
+      type: Date,
+      default: null,
+    },
+
+    status: {
+      type: String,
+      enum: ['pending', 'sent', 'failed'],
+      default: 'pending',
+    },
   },
   { timestamps: true }
 );

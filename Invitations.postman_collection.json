@@ -1,0 +1,70 @@
+{
+  "info": {
+    "name": "Invitations API",
+    "_postman_id": "12345678-abcd-efgh-ijkl-1234567890ab",
+    "description": "Collection pour tester le module Invitations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Créer une invitation",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"ID_EVENT\",\n  \"guestId\": \"ID_GUEST\",\n  \"distributionMethod\": \"email\",\n  \"templateUrl\": \"https://example.com/template\",\n  \"themeColor\": \"#ff0000\"\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/invitations", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api","invitations"] }
+      }
+    },
+    {
+      "name": "Récupérer invitations par événement",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:5000/api/invitations/event/ID_EVENT", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api","invitations","event","ID_EVENT"] }
+      }
+    },
+    {
+      "name": "Marquer invitation comme envoyée",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "http://localhost:5000/api/invitations/ID_INVITATION/sent", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api","invitations","ID_INVITATION","sent"] }
+      }
+    },
+    {
+      "name": "Supprimer une invitation",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "http://localhost:5000/api/invitations/ID_INVITATION", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api","invitations","ID_INVITATION"] }
+      }
+    },
+    {
+      "name": "Envoyer invitation simple",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"guestId\": \"ID_GUEST\",\n  \"method\": \"email\"\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/invitations/send", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api","invitations","send"] }
+      }
+    },
+    {
+      "name": "Envoyer invitations bulk",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"guestIds\": [\"ID_GUEST_1\", \"ID_GUEST_2\", \"ID_GUEST_3\"],\n  \"method\": \"whatsapp\"\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/invitations/send-bulk", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api","invitations","send-bulk"] }
+      }
+    }
+  ]
+}
