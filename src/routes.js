@@ -14,4 +14,5 @@ module.exports = (app) => {
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/invitations', invitationRoutes);
   app.use('/api/public', rsvpRoutes);
+  
 };

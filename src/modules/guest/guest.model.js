@@ -57,10 +57,15 @@ const guestSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // QR / RSVP
-    qrCode: {
-      type: String,
+    qrCode: String,
+    qrGeneratedAt: Date,
+
+    checkedIn: {
+      type: Boolean,
+      default: false,
     },
+    checkedInAt: Date,
+
   },
   { timestamps: true }
 );
