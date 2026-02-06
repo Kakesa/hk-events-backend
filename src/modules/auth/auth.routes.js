@@ -5,7 +5,10 @@ const {
   register,
   login,
   getAllUsers,
+  getAdmins,
   updatePermissions,
+  updateUser,
+  impersonate,
   deleteUser,
 } = require('./auth.controller');
 
@@ -22,27 +25,49 @@ router.get('/me', protect, (req, res) => {
   res.json({ success: true, data: req.user });
 });
 
-// USERS (ADMIN)
+// ✨ USERS (SUPERADMIN ONLY)
 router.get(
   '/users',
   protect,
-  restrictTo('admin'),
+  restrictTo('superadmin'),
   getAllUsers
+);
+
+// ✨ SUPERADMIN: Get all admins
+router.get(
+  '/users/admins',
+  protect,
+  restrictTo('superadmin'),
+  getAdmins
 );
 
 router.put(
   '/users/:id/permissions',
   protect,
-  restrictTo('admin'),
-  checkPermission('users', 'update'),
+  restrictTo('superadmin'),
   updatePermissions
+);
+
+// ✨ SUPERADMIN: Update user (for subscriptions, active status, etc.)
+router.patch(
+  '/users/:id',
+  protect,
+  restrictTo('superadmin'),
+  updateUser
+);
+
+// ✨ SUPERADMIN: Impersonate user
+router.post(
+  '/users/impersonate/:id',
+  protect,
+  restrictTo('superadmin'),
+  impersonate
 );
 
 router.delete(
   '/users/:id',
   protect,
-  restrictTo('admin'),
-  checkPermission('users', 'delete'),
+  restrictTo('superadmin'),
   deleteUser
 );
 

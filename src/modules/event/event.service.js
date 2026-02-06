@@ -71,6 +71,12 @@ const getEventsByUser = async (userId) => {
   return events.map(mapEvent);
 };
 
+// ✨ SUPERADMIN: Get all events from all users
+const getAllEvents = async () => {
+  const events = await Event.find().sort({ createdAt: -1 }).populate('userId', 'name email');
+  return events.map(mapEvent);
+};
+
 const getEventById = async (eventId, userId) => {
   const event = await Event.findOne({ _id: eventId, userId });
   if (!event) throw new Error('Événement non trouvé');
@@ -144,6 +150,7 @@ const addGuestBook = async (eventId, userId, { guestName, message }) => {
 module.exports = {
   createEvent,
   getEventsByUser,
+  getAllEvents,
   getEventById,
   updateEvent,
   deleteEvent,

@@ -72,20 +72,14 @@ const userSchema = new mongoose.Schema(
 /* =====================================================
    HASH PASSWORD (FIX CRITIQUE)
 ===================================================== */
-userSchema.pre('save', async function (next) {
-  try {
-    // ⚠️ IMPORTANT : ne re-hasher que si modifié
-    if (!this.isModified('password')) {
-      return next();
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-
-    next();
-  } catch (error) {
-    next(error);
+userSchema.pre('save', async function () {
+  // ⚠️ IMPORTANT : ne re-hasher que si modifié
+  if (!this.isModified('password')) {
+    return;
   }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 /* =====================================================

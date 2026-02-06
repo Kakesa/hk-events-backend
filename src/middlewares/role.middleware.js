@@ -7,7 +7,12 @@ const restrictTo = (...roles) => {
       });
     }
 
-    // 🔥 ADMIN PAS DE RESTRICTION
+    // 🔥 SUPERADMIN: Accès total sans restriction
+    if (req.user.role === 'superadmin') {
+      return next();
+    }
+
+    // 🔥 ADMIN: Pas de restriction
     if (req.user.role === 'admin') {
       return next();
     }

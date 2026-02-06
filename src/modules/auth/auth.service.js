@@ -157,6 +157,67 @@ const updatePermissions = async (userId, permissions) => {
 };
 
 /* =====================================================
+   UPDATE USER (GENERAL)
+===================================================== */
+const updateUser = async (userId, updateData) => {
+  // 🔒 Sécurité : ne pas permettre de changer le mot de passe ici
+  delete updateData.password;
+  
+  if (updateData.email) {
+    updateData.email = normalizeEmail(updateData.email);
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: updateData },
+    { new: true, runValidators: true }
+  ).select('-password');
+
+  if (!user) {
+    throw new Error('Utilisateur introuvable');
+  }
+
+  return user;
+};
+
+/* =====================================================
+   IMPERSONATE (SUPERADMIN ONLY)
+===================================================== */
+const impersonate = async (targetUserId) => {
+  const user = await User.findById(targetUserId);
+  if (!user) {
+    throw new Error('Utilisateur introuvable');
+  }
+
+  // 🔒 On ne peut pas usurper un autre superadmin
+  if (user.role === 'superadmin') {
+    throw new Error('Action non autorisée');
+  }
+
+  // Générer un token spécial qui contient l'info d'usurpation
+  const token = jwt.sign(
+    { 
+      id: user._id, 
+      role: user.role,
+      isImpersonated: true 
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '1h' } // Token d'usurpation court
+  );
+
+  return {
+    token,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      subscriptionType: user.subscriptionType,
+    },
+  };
+};
+
+/* =====================================================
    DELETE USER
 ===================================================== */
 const deleteUser = async (userId) => {
@@ -186,5 +247,7 @@ module.exports = {
   login,
   getAllUsers,
   updatePermissions,
+  updateUser,
+  impersonate,
   deleteUser,
 };

@@ -58,11 +58,10 @@ router.post(
   createEvent
 );
 
-// GET ALL EVENTS (doit être avant /:id pour éviter le Cast to ObjectId)
+// GET ALL EVENTS - ✨ SUPERADMIN ONLY (doit être avant /:id pour éviter le Cast to ObjectId)
 router.get(
   '/all',
-  restrictTo('admin', 'user'),
-  checkPermission('events', 'read'),
+  restrictTo('superadmin'),
   getAllEvents
 );
 
