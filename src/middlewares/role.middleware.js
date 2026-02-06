@@ -7,6 +7,8 @@ const restrictTo = (...roles) => {
       });
     }
 
+    // console.log('DEBUG ROLE CHECK:', req.user.role, 'allowed roles:', roles);
+
     // 🔥 SUPERADMIN: Accès total sans restriction
     if (req.user.role === 'superadmin') {
       return next();
