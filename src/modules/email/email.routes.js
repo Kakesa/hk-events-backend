@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const emailController = require('./email.controller');
-const { protect, restrictTo } = require('../../middlewares/auth.middleware');
+const { protect } = require('../../middlewares/auth.middleware');
+const { restrictTo } = require('../../middlewares/role.middleware');
 
 /* =====================================================
    ROUTES (/api/emails)
