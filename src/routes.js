@@ -12,6 +12,7 @@ module.exports = (app) => {
   app.use('/api/audit', auditRoutes);
   app.use('/api/guests', guestRoutes); 
   app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/activities', require('./modules/activity/activity.routes'));
   app.use('/api/invitations', invitationRoutes);
   app.use('/api/public', rsvpRoutes);
   
