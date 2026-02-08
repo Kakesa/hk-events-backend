@@ -19,7 +19,7 @@ async function seedSuperAdmin() {
         await existingSuperAdmin.save();
         console.log('✅ Utilisateur existant promu Super Admin:', superAdminEmail);
       } else {
-        console.log('✅ Super admin déjà existant:', superAdminEmail);
+        // console.log('✅ Super admin déjà existant:', superAdminEmail);
       }
       return;
     }
