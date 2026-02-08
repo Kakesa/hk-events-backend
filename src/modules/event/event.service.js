@@ -153,6 +153,16 @@ const addGuestBook = async (eventId, userId, { guestName, message }) => {
 };
 
 // =======================
+// GUESTBOOK READ
+// =======================
+const getGuestBook = async (eventId, userId) => {
+  const event = await Event.findOne({ _id: eventId, userId });
+  if (!event) throw new Error('Événement non trouvé');
+  // Sort reverse chronological
+  return (event.guestbook || []).reverse(); 
+};
+
+// =======================
 // ANALYTICS
 // =======================
 const getEventAnalytics = async (eventId, userId) => {
@@ -195,6 +205,7 @@ module.exports = {
   deleteEvent,
   publishEvent,
   getPublicEventBySlug,
-  addGuestBookPublic,
+  addGuestBook,
+  getGuestBook,
   getEventAnalytics,
 };
