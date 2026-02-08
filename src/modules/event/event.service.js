@@ -196,9 +196,5 @@ module.exports = {
   publishEvent,
   getPublicEventBySlug,
   addGuestBookPublic,
-  addGuestBookPublic,
-  addGuestBookPublic,
-  addGuestBook,
-  getGuestBook,
   getEventAnalytics,
 };
