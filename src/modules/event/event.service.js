@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const slugify = require('slugify');
+const Analytics = require('../analytics/analytics.model');
+const Guest = require('../guest/guest.model');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -60,6 +62,10 @@ const createEvent = async (eventData, file) => {
   if (file) data.coverImage = await saveFileLocal(file);
 
   const event = await Event.create(data);
+  
+  // Create empty analytics for new event
+  await Analytics.create({ eventId: event._id });
+  
   return mapEvent(event);
 };
 
@@ -141,7 +147,40 @@ const addGuestBook = async (eventId, userId, { guestName, message }) => {
 
   event.guestbook.push({ guestName, message });
   await event.save();
+  event.guestbook.push({ guestName, message });
+  await event.save();
   return mapEvent(event);
+};
+
+// =======================
+// ANALYTICS
+// =======================
+const getEventAnalytics = async (eventId, userId) => {
+  // 1. Verify event exists and belongs to user
+  const event = await Event.findOne({ _id: eventId, userId });
+  if (!event) throw new Error('Événement non trouvé');
+
+  // 2. Find Analytics document
+  let analytics = await Analytics.findOne({ eventId });
+
+  // 3. If not found, create it (backfill)
+  if (!analytics) {
+    const [confirmed, declined, pending] = await Promise.all([
+      Guest.countDocuments({ eventId, status: 'confirmed' }),
+      Guest.countDocuments({ eventId, status: 'declined' }),
+      Guest.countDocuments({ eventId, status: 'pending' }),
+    ]);
+
+    analytics = await Analytics.create({
+      eventId,
+      totalConfirmed: confirmed,
+      totalDeclined: declined,
+      totalPending: pending,
+      lastUpdated: new Date(),
+    });
+  }
+
+  return analytics;
 };
 
 // =======================
@@ -157,5 +196,9 @@ module.exports = {
   publishEvent,
   getPublicEventBySlug,
   addGuestBookPublic,
+  addGuestBookPublic,
+  addGuestBookPublic,
   addGuestBook,
+  getGuestBook,
+  getEventAnalytics,
 };

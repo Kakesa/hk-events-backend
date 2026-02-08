@@ -76,6 +76,25 @@ const getEvent = async (req, res, next) => {
 };
 
 /* =======================
+   GET EVENT ANALYTICS
+======================= */
+const getEventAnalytics = async (req, res, next) => {
+  try {
+    const analytics = await eventService.getEventAnalytics(
+      req.params.id,
+      req.user.id
+    );
+
+    res.json({
+      success: true,
+      data: analytics,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =======================
    UPDATE EVENT
 ======================= */
 const updateEvent = async (req, res, next) => {
@@ -194,17 +213,39 @@ const addGuestBook = async (req, res, next) => {
 };
 
 /* =======================
+   GET GUESTBOOK (PRIVATE)
+======================= */
+const getGuestBook = async (req, res, next) => {
+  try {
+    const messages = await eventService.getGuestBook(
+      req.params.id,
+      req.user.id
+    );
+
+    res.json({
+      success: true,
+      data: messages,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =======================
    EXPORTS
 ======================= */
 module.exports = {
   createEvent,
   getEvents,
   getAllEvents,
+
   getEvent,
+  getEventAnalytics,
   updateEvent,
   deleteEvent,
   publishEvent,
   getPublicEventBySlug,
   addGuestBookPublic,
   addGuestBook,
+  getGuestBook,
 };

@@ -19,6 +19,8 @@ const {
   deleteEvent,
   publishEvent,
   addGuestBook,
+  getEventAnalytics,
+  getGuestBook,
 } = require('./event.controller');
 
 /* =======================
@@ -81,6 +83,14 @@ router.get(
   getEvent
 );
 
+// GET EVENT ANALYTICS
+router.get(
+  '/:id/analytics',
+  restrictTo('admin', 'user'),
+  checkPermission('events', 'read'),
+  getEventAnalytics
+);
+
 // UPDATE EVENT
 router.put(
   '/:id',
@@ -112,6 +122,14 @@ router.post(
   restrictTo('admin', 'user'),
   checkPermission('events', 'update'),
   addGuestBook
+);
+
+// GET GUESTBOOK ENTRIES
+router.get(
+  '/:id/guestbook',
+  restrictTo('admin', 'user'),
+  checkPermission('events', 'read'),
+  getGuestBook
 );
 
 module.exports = router;
