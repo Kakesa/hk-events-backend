@@ -19,8 +19,18 @@ async function sendEmail(to, subject, html, metadata = {}) {
     throw new Error("Configuration email manquante. Vérifiez votre fichier .env");
   }
 
+  // 2. Validation de l'adresse email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!to || !emailRegex.test(to)) {
+    console.error(`❌ Adresse email invalide: ${to}`);
+    throw new Error(`Adresse email invalide: ${to}`);
+  }
+
+  console.log(`📧 Préparation envoi email à ${to}`);
+  console.log(`   Sujet: ${subject}`);
+
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `"HK Events" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
@@ -28,6 +38,9 @@ async function sendEmail(to, subject, html, metadata = {}) {
 
   try {
     const info = await transporter.sendMail(mailOptions);
+    
+    console.log(`✅ Email envoyé avec succès à ${to}`);
+    console.log(`   Message ID: ${info.messageId}`);
     
     // Log succès
     await EmailLog.create({
@@ -42,6 +55,8 @@ async function sendEmail(to, subject, html, metadata = {}) {
     
     return info;
   } catch (err) {
+    console.error(`❌ Erreur envoi email à ${to}:`, err.message);
+    
     // Log erreur
     await EmailLog.create({
       recipientEmail: to,
@@ -51,7 +66,8 @@ async function sendEmail(to, subject, html, metadata = {}) {
       eventId: metadata.eventId,
       error: err.message
     });
-    throw err;
+    
+    throw new Error(`Impossible d'envoyer l'email à ${to}: ${err.message}`);
   }
 }
 

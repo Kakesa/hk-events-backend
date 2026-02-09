@@ -64,18 +64,78 @@ const sendMessage = async (guest, method) => {
 // Envoi à un invité
 exports.sendInvitation = async (req, res) => {
   try {
-    const { guestId, method } = req.body;
+    let { guestId, method, eventId } = req.body;
+    
+    // Default method to 'email' if not provided
+    method = method || 'email';
+    
+    if (!eventId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'L\'ID de l\'événement est requis' 
+      });
+    }
+
     const guest = await Guest.findById(guestId);
-    if (!guest) return res.status(404).json({ success: false, message: 'Guest not found' });
+    if (!guest) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Invité introuvable' 
+      });
+    }
+
+    // Fetch event details
+    const Event = require('../event/event.model');
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Événement introuvable' 
+      });
+    }
 
     if (method === 'email') {
-      if (!guest.email) return res.status(400).json({ success: false, message: 'Guest has no email' });
+      if (!guest.email) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'L\'invité n\'a pas d\'adresse email' 
+        });
+      }
+
+      // Generate RSVP link
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const rsvpLink = `${frontendUrl}/rsvp/${eventId}/${guestId}`;
+
+      // Import email template
+      const { generateInvitationEmail } = require('../../utils/email-templates');
+
+      // Generate professional email HTML
+      const emailHtml = generateInvitationEmail(
+        { name: guest.name, email: guest.email },
+        {
+          title: event.title,
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          location: event.location,
+          description: event.description,
+          coverImage: event.coverImage
+        },
+        rsvpLink
+      );
 
       await sendEmail(
         guest.email,
-        'Invitation à votre événement',
-        `<p>Bonjour ${guest.name},</p><p>Vous êtes invité à notre événement !</p>`
+        `Invitation - ${event.title}`,
+        emailHtml,
+        {
+          recipientName: guest.name,
+          eventId: eventId
+        }
       );
+
+      console.log(`✅ Email envoyé à ${guest.name} (${guest.email})`);
     } else {
       console.log(`Simulation ${method} à ${guest.name} (${guest.phone || guest.email})`);
     }
@@ -83,50 +143,166 @@ exports.sendInvitation = async (req, res) => {
     // Créer ou mettre à jour invitation
     const invitation = await Invitation.findOneAndUpdate(
       { guestId },
-      { sentAt: new Date(), distributionMethod: method },
+      { 
+        sentAt: new Date(), 
+        distributionMethod: method,
+        eventId: eventId
+      },
       { upsert: true, new: true }
     );
 
-    res.json({ success: true, data: invitation });
+    res.json({ 
+      success: true, 
+      message: 'Invitation envoyée avec succès',
+      data: invitation 
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error('❌ Erreur sendInvitation:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de l\'envoi de l\'invitation',
+      error: err.message 
+    });
   }
 };
 
 exports.sendBulkInvitations = async (req, res) => {
   try {
-    const { guestIds, method } = req.body;
-    if (!guestIds || guestIds.length === 0)
-      return res.status(400).json({ success: false, message: 'Aucun invité sélectionné' });
-
-    const invitations = [];
-
-    for (const guestId of guestIds) {
-      const guest = await Guest.findById(guestId);
-      if (!guest) continue;
-
-      if (method === 'email' && guest.email) {
-        await sendEmail(
-          guest.email,
-          'Invitation à votre événement',
-          `<p>Bonjour ${guest.name},</p><p>Vous êtes invité à notre événement !</p>`
-        );
-      } else {
-        console.log(`Simulation ${method} à ${guest.name} (${guest.phone || guest.email})`);
-      }
-
-      const invitation = await Invitation.findOneAndUpdate(
-        { guestId },
-        { sentAt: new Date(), distributionMethod: method },
-        { upsert: true, new: true }
-      );
-      invitations.push(invitation);
+    let { guestIds, method, eventId } = req.body;
+    
+    // Default method to 'email' if not provided
+    method = method || 'email';
+    
+    // Validation
+    if (!guestIds || guestIds.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Aucun invité sélectionné' 
+      });
     }
 
-    res.json({ success: true, data: invitations });
+    if (!eventId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'L\'ID de l\'événement est requis' 
+      });
+    }
+
+    // Fetch event details
+    const Event = require('../event/event.model');
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Événement introuvable' 
+      });
+    }
+
+    const invitations = [];
+    const results = {
+      total: guestIds.length,
+      sent: 0,
+      failed: 0,
+      errors: []
+    };
+
+    // Import email template
+    const { generateInvitationEmail } = require('../../utils/email-templates');
+
+    for (const guestId of guestIds) {
+      try {
+        const guest = await Guest.findById(guestId);
+        if (!guest) {
+          results.failed++;
+          results.errors.push({ guestId, error: 'Invité introuvable' });
+          continue;
+        }
+
+        if (method === 'email' && guest.email) {
+          // Generate RSVP link
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const rsvpLink = `${frontendUrl}/rsvp/${eventId}/${guestId}`;
+
+          // Generate professional email HTML
+          const emailHtml = generateInvitationEmail(
+            { name: guest.name, email: guest.email },
+            {
+              title: event.title,
+              date: event.date,
+              startTime: event.startTime,
+              endTime: event.endTime,
+              location: event.location,
+              description: event.description,
+              coverImage: event.coverImage
+            },
+            rsvpLink
+          );
+
+          // Send email
+          await sendEmail(
+            guest.email,
+            `Invitation - ${event.title}`,
+            emailHtml,
+            {
+              recipientName: guest.name,
+              eventId: eventId
+            }
+          );
+
+          results.sent++;
+          console.log(`✅ Email envoyé à ${guest.name} (${guest.email})`);
+        } else if (method === 'email' && !guest.email) {
+          results.failed++;
+          results.errors.push({ 
+            guestId, 
+            name: guest.name, 
+            error: 'Aucune adresse email' 
+          });
+          continue;
+        } else {
+          // Other methods (SMS, WhatsApp) - simulation
+          console.log(`Simulation ${method} à ${guest.name} (${guest.phone || guest.email})`);
+          results.sent++;
+        }
+
+        // Create or update invitation record
+        const invitation = await Invitation.findOneAndUpdate(
+          { guestId },
+          { 
+            sentAt: new Date(), 
+            distributionMethod: method,
+            eventId: eventId
+          },
+          { upsert: true, new: true }
+        );
+        invitations.push(invitation);
+
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ 
+          guestId, 
+          error: error.message 
+        });
+        console.error(`❌ Erreur envoi à ${guestId}:`, error.message);
+      }
+    }
+
+    // Return detailed results
+    res.json({ 
+      success: true, 
+      message: `${results.sent} invitation(s) envoyée(s) sur ${results.total}`,
+      data: {
+        invitations,
+        stats: results
+      }
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error('❌ Erreur sendBulkInvitations:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de l\'envoi des invitations',
+      error: err.message 
+    });
   }
 };
