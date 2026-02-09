@@ -4,21 +4,21 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, // ton email
-    pass: process.env.EMAIL_PASS, // mot de passe ou App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
 const EmailLog = require('../modules/email/email.model');
 
-/**
- * sendEmail - envoie un email simple et le loggue en base
- * @param {string} to - destinataire
- * @param {string} subject - sujet de l'email
- * @param {string} html - contenu HTML de l'email
- * @param {object} metadata - options (eventId, recipientName...)
- */
+// ==================== sendEmail Function ====================
 async function sendEmail(to, subject, html, metadata = {}) {
+  // 1. Validation de la configuration
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error('❌ Configuration email manquante : EMAIL_USER ou EMAIL_PASS');
+    throw new Error("Configuration email manquante. Vérifiez votre fichier .env");
+  }
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to,
