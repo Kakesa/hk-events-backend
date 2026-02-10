@@ -1,4 +1,8 @@
 const EmailLog = require('./email.model');
+const { sendEmail } = require('../../services/email.service');
+const Event = require('../event/event.model');
+const Guest = require('../guest/guest.model');
+const User = require('../users/users.model');
 
 // ==================== GET Logs ====================
 exports.getEmailLogs = async (req, res, next) => {
@@ -93,5 +97,53 @@ exports.resendEmail = async (req, res, next) => {
     res.json({ success: true, message: 'Email renvoyé', data: { status: 'sent' } });
   } catch (err) {
     next(err);
+  }
+};
+
+// ==================== NOTIFY ORGANIZER ====================
+exports.sendOrganizerNotification = async (req, res, next) => {
+  try {
+    const { guestId, eventId, status } = req.body;
+
+    if (!guestId || !eventId || !status) {
+      return res.status(400).json({ success: false, message: 'Données incomplètes' });
+    }
+
+    // 1. Récupérer l'événement et l'organisateur
+    const event = await Event.findById(eventId).populate('userId');
+    if (!event || !event.userId) {
+      return res.status(404).json({ success: false, message: 'Événement ou organisateur introuvable' });
+    }
+
+    const organizer = event.userId; // Populated User
+    const guest = await Guest.findById(guestId);
+
+    if (!guest) {
+      return res.status(404).json({ success: false, message: 'Invité introuvable' });
+    }
+
+    // 2. Préparer l'email
+    const subject = `Nouveau RSVP pour ${event.title}`;
+    const html = `
+      <h2>Nouvelle réponse RSVP</h2>
+      <p><strong>Invité :</strong> ${guest.name} (${guest.email})</p>
+      <p><strong>Événement :</strong> ${event.title}</p>
+      <p><strong>Statut :</strong> <span style="color: ${status === 'confirmed' ? 'green' : 'red'}">${status.toUpperCase()}</span></p>
+      ${guest.message ? `<p><strong>Message :</strong> ${guest.message}</p>` : ''}
+      <br/>
+      <p>Connectez-vous à votre tableau de bord pour voir plus de détails.</p>
+    `;
+
+    // 3. Envoyer l'email
+    await sendEmail(organizer.email, subject, html, {
+      recipientName: organizer.name,
+      eventId: event._id
+    });
+
+    res.json({ success: true, message: 'Notification envoyée' });
+  } catch (err) {
+    console.error('sendOrganizerNotification error:', err);
+    // On ne bloque pas si l'email échoue, mais on log l'erreur
+    res.status(500).json({ success: false, message: "Erreur lors de l'envoi de la notification" });
   }
 };

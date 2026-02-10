@@ -129,6 +129,12 @@ const getPublicEventBySlug = async (slug) => {
   return mapEvent(event);
 };
 
+const getEventPublicById = async (eventId) => {
+  const event = await Event.findById(eventId);
+  if (!event) throw new Error('Événement non trouvé');
+  return mapEvent(event);
+};
+
 // =======================
 // GUESTBOOK
 // =======================
@@ -205,6 +211,7 @@ module.exports = {
   deleteEvent,
   publishEvent,
   getPublicEventBySlug,
+  getEventPublicById,
   addGuestBook,
   getGuestBook,
   getEventAnalytics,

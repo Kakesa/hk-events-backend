@@ -4,6 +4,7 @@ const rsvpController = require('./rsvp.controller');
 
 
 // Public RSVP routes (NO AUTH)
+router.get('/events/:id', rsvpController.getPublicEvent);
 router.get('/rsvp/:eventId/:guestId', rsvpController.getPublicRSVP);
 router.post('/rsvp/:guestId', rsvpController.submitRSVP);
 // Check-in QR (PUBLIC)

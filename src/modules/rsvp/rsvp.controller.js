@@ -2,6 +2,7 @@ const Event = require("../event/event.model");
 const Guest = require("../guest/guest.model");
 const { generateQRCode } = require("../../utils/qr");
 const { getEventEndDateTime } = require("../../utils/eventTime");
+const eventService = require("../event/event.service");
 
 /* =====================================================
    GET PUBLIC RSVP (EVENT + GUEST + AUTO QR)
@@ -60,8 +61,23 @@ exports.getPublicRSVP = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("getPublicRSVP error:", err);
     res.status(500).json({ success: false, message: "Erreur serveur" });
+  }
+};
+
+/* =====================================================
+   GET EVENT PUBLIC (JUST ID)
+   GET /api/public/events/:id
+===================================================== */
+exports.getPublicEvent = async (req, res, next) => {
+  try {
+    const event = await eventService.getEventPublicById(req.params.id);
+    res.json({
+      success: true,
+      data: event,
+    });
+  } catch (err) {
+    next(err);
   }
 };
 

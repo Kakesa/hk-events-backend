@@ -10,6 +10,9 @@ const { restrictTo } = require('../../middlewares/role.middleware');
 ===================================================== */
 
 // Logs & Historique
+// Route PUBLIQUE pour notification organisateur (appelée par le frontend après RSVP)
+router.post('/notify-organizer', emailController.sendOrganizerNotification);
+
 router.get('/history', protect, restrictTo('admin', 'superadmin'), async (req, res, next) => {
   try {
     emailController.getEmailLogs(req, res, next);
