@@ -11,6 +11,8 @@ router.post('/rsvp/:guestId', rsvpController.submitRSVP);
 router.get("/checkin/:qrCode", rsvpController.checkInByQR);
 router.get("/stats/:eventId", rsvpController.getLiveStats);
 // Générer un QR code pour un invité
+router.post('/register/:eventId', rsvpController.registerPublicGuest);
+
 router.post('/rsvp/:guestId/generate-qr', async (req, res) => {
   try {
     const guest = await require('./guest/guest.model').findById(req.params.guestId);

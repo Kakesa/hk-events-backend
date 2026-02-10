@@ -20,7 +20,7 @@ exports.getPublicRSVP = async (req, res) => {
       });
     }
 
-    const guest = await Guest.findOne({ _id: guestId, event: eventId });
+    const guest = await Guest.findOne({ _id: guestId, eventId: eventId });
     if (!guest) {
       return res.status(404).json({
         success: false,
@@ -106,7 +106,7 @@ exports.submitRSVP = async (req, res) => {
 
     // 🔐 QR généré uniquement si confirmé
     if (status === "confirmed" && !guest.qrCode) {
-      guest.qrCode = generateQRCode(guest.event.toString(), guestId);
+      guest.qrCode = generateQRCode(guest.eventId.toString(), guestId);
       guest.qrGeneratedAt = new Date();
     }
 
@@ -131,7 +131,7 @@ exports.checkInByQR = async (req, res) => {
   try {
     const { qrCode } = req.params;
 
-    const guest = await Guest.findOne({ qrCode }).populate("event");
+    const guest = await Guest.findOne({ qrCode }).populate("eventId");
     if (!guest) {
       return res.status(404).json({
         success: false,
@@ -140,7 +140,7 @@ exports.checkInByQR = async (req, res) => {
     }
 
     // ⛔ QR expiré après l'événement
-    const eventEnd = getEventEndDateTime(guest.event);
+    const eventEnd = getEventEndDateTime(guest.eventId);
     if (eventEnd && new Date() > eventEnd) {
       return res.status(403).json({
         success: false,
@@ -182,8 +182,8 @@ exports.checkInByQR = async (req, res) => {
           checkedInAt: guest.checkedInAt,
         },
         event: {
-          id: guest.event._id,
-          title: guest.event.title,
+          id: guest.eventId._id,
+          title: guest.eventId.title,
         },
       },
     });
@@ -201,7 +201,7 @@ exports.getLiveStats = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const guests = await Guest.find({ event: eventId });
+    const guests = await Guest.find({ eventId: eventId });
     if (!guests.length) {
       return res.status(404).json({
         success: false,
@@ -225,6 +225,73 @@ exports.getLiveStats = async (req, res) => {
     res.json({ success: true, data: stats });
   } catch (err) {
     console.error("getLiveStats error:", err);
+    res.status(500).json({ success: false, message: "Erreur serveur" });
+  }
+};
+
+/* =====================================================
+   REGISTER PUBLIC GUEST (NO INVITE LINK)
+   POST /api/public/register/:eventId
+===================================================== */
+exports.registerPublicGuest = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { name, email, status = "pending", drinkPreference, dietaryRestrictions, message, plusOne, plusOneName } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ success: false, message: "Nom et email requis" });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Événement introuvable" });
+    }
+
+    // Check existing email for this event
+    let guest = await Guest.findOne({ eventId: eventId, email: email.toLowerCase() });
+
+    if (guest) {
+      // Update existing
+      guest.status = status;
+      guest.drinkPreference = drinkPreference;
+      guest.dietaryRestrictions = dietaryRestrictions;
+      guest.message = message;
+      guest.plusOne = plusOne;
+      guest.plusOneName = plusOneName;
+      guest.respondedAt = new Date();
+    } else {
+      // Create new
+      guest = new Guest({
+        eventId: eventId,
+        name,
+        email: email.toLowerCase(),
+        status,
+        drinkPreference,
+        dietaryRestrictions,
+        message,
+        plusOne,
+        plusOneName,
+        respondedAt: new Date(),
+        distributionMethod: 'link', // Self-registered
+      });
+    }
+
+    // Generate QR if confirmed
+    if (status === "confirmed" && !guest.qrCode) {
+      guest.qrCode = generateQRCode(eventId, guest._id.toString());
+      guest.qrGeneratedAt = new Date();
+    }
+
+    await guest.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Inscription confirmée",
+      data: guest,
+    });
+
+  } catch (err) {
+    console.error("registerPublicGuest error:", err);
     res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 };
