@@ -168,7 +168,7 @@ exports.sendInvitation = async (req, res) => {
 
 exports.sendBulkInvitations = async (req, res) => {
   try {
-    let { guestIds, method, eventId } = req.body;
+    let { guestIds, method, eventId, htmlContent, subject, customMessage } = req.body;
     
     // Default method to 'email' if not provided
     method = method || 'email';
@@ -190,7 +190,7 @@ exports.sendBulkInvitations = async (req, res) => {
 
     // Fetch event details
     const Event = require('../event/event.model');
-    const event = await Event.findById(eventId);
+    const event = await Event.findById(eventId).populate('userId');
     
     if (!event) {
       return res.status(404).json({ 
@@ -207,8 +207,26 @@ exports.sendBulkInvitations = async (req, res) => {
       errors: []
     };
 
-    // Import email template
+    // Import email template generator (for fallback)
     const { generateInvitationEmail } = require('../../utils/email-templates');
+
+    // Helper to replace variables in custom templates
+    const replaceVariables = (text, guest, event, rsvpLink) => {
+      const eventDate = new Date(event.date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      return text
+        .replace(/{{eventName}}/g, event.title)
+        .replace(/{{eventDate}}/g, eventDate)
+        .replace(/{{eventLocation}}/g, event.location)
+        .replace(/{{guestName}}/g, guest.name)
+        .replace(/{{organizerName}}/g, event.userId?.name || 'L\'équipe organisatrice')
+        .replace(/{{rsvpLink}}/g, rsvpLink);
+    };
 
     for (const guestId of guestIds) {
       try {
@@ -224,26 +242,36 @@ exports.sendBulkInvitations = async (req, res) => {
           const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
           const rsvpLink = `${frontendUrl}/rsvp/${eventId}/${guestId}`;
 
-          // Generate professional email HTML
-          const emailHtml = generateInvitationEmail(
-            { name: guest.name, email: guest.email },
-            {
-              title: event.title,
-              date: event.date,
-              startTime: event.startTime,
-              endTime: event.endTime,
-              location: event.location,
-              description: event.description,
-              coverImage: event.coverImage
-            },
-            rsvpLink
-          );
+          let finalHtml;
+          let finalSubject;
+
+          if (htmlContent) {
+            // Use custom template provided by frontend
+            finalHtml = replaceVariables(htmlContent, guest, event, rsvpLink);
+            finalSubject = subject ? replaceVariables(subject, guest, event, rsvpLink) : `Invitation - ${event.title}`;
+          } else {
+            // Use default professional template
+            finalHtml = generateInvitationEmail(
+              { name: guest.name, email: guest.email },
+              {
+                title: event.title,
+                date: event.date,
+                startTime: event.startTime,
+                endTime: event.endTime,
+                location: event.location,
+                description: event.description,
+                coverImage: event.coverImage
+              },
+              rsvpLink
+            );
+            finalSubject = `Invitation - ${event.title}`;
+          }
 
           // Send email
           await sendEmail(
             guest.email,
-            `Invitation - ${event.title}`,
-            emailHtml,
+            finalSubject,
+            finalHtml,
             {
               recipientName: guest.name,
               eventId: eventId
@@ -268,7 +296,7 @@ exports.sendBulkInvitations = async (req, res) => {
 
         // Create or update invitation record
         const invitation = await Invitation.findOneAndUpdate(
-          { guestId },
+          { guestId, eventId },
           { 
             sentAt: new Date(), 
             distributionMethod: method,
