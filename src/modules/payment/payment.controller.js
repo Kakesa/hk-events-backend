@@ -48,8 +48,36 @@ const handleWebhook = async (req, res, next) => {
   }
 };
 
+const getAllPayments = async (req, res, next) => {
+  try {
+    const payments = await paymentService.getAllPayments();
+    res.json({
+      success: true,
+      data: payments,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const simulateSuccess = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const payment = await paymentService.simulateSuccess(id);
+
+    res.json({
+      success: true,
+      data: payment,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   initiatePayment,
   verifyPayment,
   handleWebhook,
+  getAllPayments,
+  simulateSuccess,
 };

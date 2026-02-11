@@ -60,8 +60,61 @@ const processWebhook = async (transactionId, status) => {
   return payment;
 };
 
+/**
+ * Simulation uniquement pour démo
+ */
+const simulateSuccess = async (paymentId) => {
+  const payment = await Payment.findById(paymentId);
+  if (!payment) return null;
+
+  payment.status = 'successful';
+  await payment.save();
+
+  await User.findByIdAndUpdate(payment.userId, {
+    subscriptionType: payment.plan
+  });
+
+  return payment;
+};
+
+/**
+ * Récupère tous les paiements (Super Admin)
+ */
+const getAllPayments = async () => {
+  return await Payment.find().populate('userId', 'name email').sort({ createdAt: -1 });
+};
+
+/**
+ * Calcule le revenu mensuel total
+ */
+const getMonthlyRevenue = async () => {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const result = await Payment.aggregate([
+    {
+      $match: {
+        status: 'successful',
+        createdAt: { $gte: startOfMonth }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$amount' }
+      }
+    }
+  ]);
+
+  return result.length > 0 ? result[0].total : 0;
+};
+
 module.exports = {
   initiatePayment,
   verifyPayment,
   processWebhook,
+  getAllPayments,
+  getMonthlyRevenue,
+  simulateSuccess,
 };
