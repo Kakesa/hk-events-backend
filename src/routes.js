@@ -16,5 +16,6 @@ module.exports = (app) => {
   app.use('/api/emails', require('./modules/email/email.routes'));
   app.use('/api/invitations', invitationRoutes);
   app.use('/api/public', rsvpRoutes);
+  app.use('/api/payments', require('./modules/payment/payment.routes'));
   
 };
