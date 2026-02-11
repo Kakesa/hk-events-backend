@@ -66,6 +66,12 @@ const guestSchema = new mongoose.Schema(
     },
     checkedInAt: Date,
 
+    table: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
   },
   { timestamps: true }
 );
