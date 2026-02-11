@@ -7,17 +7,33 @@ const Event = require('../event/event.model');
 exports.getRecentActivities = async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
+    const isSuperadmin = req.user.role === 'superadmin';
+    const userId = req.user.id;
 
-    // 1. Récupérer les dernières interactions invités (RSVP)
-    const recentGuests = await Guest.find({
+    // 1. Définir le filtre de base pour les invités
+    let guestFilter = {
       status: { $in: ['confirmed', 'declined', 'pending'] },
       respondedAt: { $exists: true }
-    })
+    };
+
+    // 2. Définir le filtre pour l'agrégation des messages
+    let eventMatch = {};
+
+    // Si pas superadmin, on filtre par les événements de l'user
+    if (!isSuperadmin) {
+      const userEvents = await Event.find({ userId }).select('_id');
+      const eventIds = userEvents.map(e => e._id);
+      guestFilter.eventId = { $in: eventIds };
+      eventMatch.userId = userId;
+    }
+
+    // 3. Récupérer les dernières interactions invités
+    const recentGuests = await Guest.find(guestFilter)
       .sort({ respondedAt: -1 })
       .limit(limit)
       .populate('eventId', 'title');
 
-    // 2. Transformer en format standard
+    // 4. Transformer en format standard
     const guestActivities = recentGuests.map(g => ({
       id: g._id,
       type: g.status, // confirmed, declined, pending
@@ -29,8 +45,9 @@ exports.getRecentActivities = async (req, res, next) => {
       createdAt: g.createdAt
     }));
 
-    // 3. Récupérer les derniers messages du livre d'or (via Aggrégation)
+    // 5. Récupérer les derniers messages du livre d'or via agrégation
     const recentMessages = await Event.aggregate([
+      { $match: eventMatch },
       { $unwind: '$guestbook' },
       { $sort: { 'guestbook.createdAt': -1 } },
       { $limit: limit },
@@ -43,19 +60,19 @@ exports.getRecentActivities = async (req, res, next) => {
       }
     ]);
 
-    // 4. Transformer messages
+    // 6. Transformer messages
     const messageActivities = recentMessages.map(m => ({
       id: m.guestbook._id,
       type: 'message',
       guestName: m.guestbook.guestName,
-      guestId: null, // Pas de lien direct user/guest ici
+      guestId: null,
       eventId: m._id,
       eventTitle: m.title,
       time: m.guestbook.createdAt,
       createdAt: m.guestbook.createdAt
     }));
 
-    // 5. Fusionner et trier
+    // 7. Fusionner et trier
     const allActivities = [...guestActivities, ...messageActivities]
       .sort((a, b) => new Date(b.time) - new Date(a.time))
       .slice(0, limit);
