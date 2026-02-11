@@ -136,6 +136,8 @@ exports.sendInvitation = async (req, res) => {
       );
 
       console.log(`✅ Email envoyé à ${guest.name} (${guest.email})`);
+    } else if (method === 'whatsapp' || method === 'sms') {
+      console.log(`📱 Invitation ${method} enregistrée pour ${guest.name} (${guest.phone})`);
     } else {
       console.log(`Simulation ${method} à ${guest.name} (${guest.phone || guest.email})`);
     }
