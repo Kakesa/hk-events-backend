@@ -104,7 +104,7 @@ exports.sendInvitation = async (req, res) => {
       }
 
       // Generate RSVP link
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
       const rsvpLink = `${frontendUrl}/rsvp/${eventId}/${guestId}`;
 
       // Import email template
@@ -239,7 +239,7 @@ exports.sendBulkInvitations = async (req, res) => {
 
         if (method === 'email' && guest.email) {
           // Generate RSVP link
-          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
           const rsvpLink = `${frontendUrl}/rsvp/${eventId}/${guestId}`;
 
           let finalHtml;

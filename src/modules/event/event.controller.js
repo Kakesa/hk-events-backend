@@ -238,7 +238,6 @@ module.exports = {
   createEvent,
   getEvents,
   getAllEvents,
-
   getEvent,
   getEventAnalytics,
   updateEvent,
