@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Event = require("../event/event.model");
 const Guest = require("../guest/guest.model");
 const { generateQRCode } = require("../../utils/qr");
@@ -11,6 +12,13 @@ const eventService = require("../event/event.service");
 exports.getPublicRSVP = async (req, res) => {
   try {
     const { eventId, guestId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(eventId) || !mongoose.Types.ObjectId.isValid(guestId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID invalide",
+      });
+    }
 
     const event = await Event.findById(eventId);
     if (!event) {
@@ -89,6 +97,13 @@ exports.submitRSVP = async (req, res) => {
   try {
     const { guestId } = req.params;
     const { status, drinkPreference, dietaryRestrictions, message } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(guestId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID invité invalide",
+      });
+    }
 
     const guest = await Guest.findById(guestId);
     if (!guest) {
@@ -237,6 +252,10 @@ exports.registerPublicGuest = async (req, res) => {
   try {
     const { eventId } = req.params;
     const { name, email, status = "pending", drinkPreference, dietaryRestrictions, message, plusOne, plusOneName } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: "ID événement invalide" });
+    }
 
     if (!name || !email) {
       return res.status(400).json({ success: false, message: "Nom et email requis" });
