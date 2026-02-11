@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/database');
@@ -25,6 +26,9 @@ app.use(
 // ⚠️ Les routes multipart/form-data ne passeront pas ici
 app.use(express.json({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: true }));
+
+// 🔹 Static Files (Images)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 🔹 Routes principales
 routes(app);

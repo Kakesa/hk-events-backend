@@ -67,6 +67,7 @@ const register = async (data) => {
       email: user.email,
       role: user.role,
       permissions: user.permissions,
+      subscriptionType: user.subscriptionType,
     },
   };
 };
@@ -103,6 +104,7 @@ const login = async ({ email, password }) => {
       email: user.email,
       role: user.role,
       permissions: user.permissions,
+      subscriptionType: user.subscriptionType,
     },
   };
 };

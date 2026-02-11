@@ -62,6 +62,11 @@ const userSchema = new mongoose.Schema(
       type: [permissionSchema],
       default: [],
     },
+    subscriptionType: {
+      type: String,
+      enum: ['free', 'basic', 'premium', 'enterprise'],
+      default: 'free',
+    },
   },
   {
     timestamps: true,
