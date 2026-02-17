@@ -204,6 +204,7 @@ const getEventAnalytics = async (eventId, userId) => {
 // =======================
 module.exports = {
   createEvent,
+  addGuestBookPublic,
   getEventsByUser,
   getAllEvents,
   getEventById,
