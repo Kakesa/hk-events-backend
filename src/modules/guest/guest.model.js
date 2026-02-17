@@ -37,7 +37,6 @@ const guestSchema = new mongoose.Schema(
     // RSVP DATA
     drinkPreference: {
       type: String,
-      enum: ['champagne', 'wine', 'cocktail', 'beer', 'soft', 'none', ''],
       default: '',
     },
 
