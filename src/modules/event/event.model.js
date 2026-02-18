@@ -64,6 +64,16 @@ const EventSchema = new mongoose.Schema(
       default: 'elegant',
     },
 
+    primaryColor: {
+      type: String,
+      default: '#D4AF37', // Gold default
+    },
+
+    accentColor: {
+      type: String,
+      default: '#ffffff',
+    },
+
     published: {
       type: Boolean,
       default: false,
