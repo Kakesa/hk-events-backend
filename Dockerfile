@@ -1,0 +1,21 @@
+FROM node:22-slim AS deps
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+FROM node:22-slim AS runtime
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+COPY src ./src
+
+RUN mkdir -p /app/src/uploads && chown -R node:node /app
+
+USER node
+EXPOSE 8080
+
+CMD ["npm", "start"]

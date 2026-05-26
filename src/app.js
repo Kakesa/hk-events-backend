@@ -3,37 +3,51 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const connectDB = require('./config/database');
 const routes = require('./routes');
 const { errorHandler } = require('./middlewares/error.middleware');
 
 const app = express();
 
-// 🔹 Connexion à la DB
-connectDB();
-
-// 🔹 CORS
-app.use(
-  cors({
-    origin: 'http://localhost:8080',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
+const allowedOrigins = new Set(
+  [
+    process.env.CORS_ORIGIN,
+    process.env.FRONTEND_URL,
+    process.env.NODE_ENV !== 'production' ? 'http://localhost:8080' : null,
+    process.env.NODE_ENV !== 'production' ? 'http://127.0.0.1:8080' : null,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => value.split(','))
+    .map((origin) => origin.trim())
+    .filter(Boolean)
 );
 
-// 🔹 Parser JSON uniquement pour les requêtes application/json
-// ⚠️ Les routes multipart/form-data ne passeront pas ici
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: true }));
 
-// 🔹 Static Files (Images)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 🔹 Routes principales
+app.get('/healthz', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 routes(app);
 
-// 🔹 Middleware de gestion des erreurs
 app.use(errorHandler);
 
 module.exports = app;
