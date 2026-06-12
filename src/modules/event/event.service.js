@@ -83,8 +83,15 @@ const getAllEvents = async () => {
   return events.map(mapEvent);
 };
 
-const getEventById = async (eventId, userId) => {
-  const event = await Event.findOne({ _id: eventId, userId });
+const getEventById = async (eventId, userId, isSuperadmin = false) => {
+  let query = { _id: eventId };
+  
+  // Si pas superadmin, vérifier l'ownership
+  if (!isSuperadmin) {
+    query.userId = userId;
+  }
+  
+  const event = await Event.findOne(query);
   if (!event) throw new Error('Événement non trouvé');
   return mapEvent(event);
 };
@@ -151,18 +158,38 @@ const addGuestBook = async (eventId, userId, { guestName, message }) => {
   const event = await Event.findOne({ _id: eventId, userId });
   if (!event) throw new Error('Événement non trouvé');
 
-  event.guestbook.push({ guestName, message });
-  await event.save();
+  // Add a single guestbook entry (previously duplicated)
   event.guestbook.push({ guestName, message });
   await event.save();
   return mapEvent(event);
 };
 
+// Reply to a guestbook message (organizer updates)
+const replyGuestBook = async (eventId, userId, messageId, reply) => {
+  const event = await Event.findOne({ _id: eventId, userId });
+  if (!event) throw new Error('Événement non trouvé');
+
+  const msg = event.guestbook.id(messageId);
+  if (!msg) throw new Error('Message non trouvé');
+
+  msg.reply = reply;
+  msg.repliedAt = new Date();
+
+  await event.save();
+
+  // Return the updated message
+  return msg.toObject();
+};
+
 // =======================
 // GUESTBOOK READ
 // =======================
-const getGuestBook = async (eventId, userId) => {
-  const event = await Event.findOne({ _id: eventId, userId });
+const getGuestBook = async (eventId, userId, isSuperadmin = false) => {
+  let query = { _id: eventId };
+  if (!isSuperadmin) {
+    query.userId = userId;
+  }
+  const event = await Event.findOne(query);
   if (!event) throw new Error('Événement non trouvé');
   // Sort reverse chronological
   return (event.guestbook || []).reverse(); 
@@ -171,9 +198,13 @@ const getGuestBook = async (eventId, userId) => {
 // =======================
 // ANALYTICS
 // =======================
-const getEventAnalytics = async (eventId, userId) => {
+const getEventAnalytics = async (eventId, userId, isSuperadmin = false) => {
   // 1. Verify event exists and belongs to user
-  const event = await Event.findOne({ _id: eventId, userId });
+  let query = { _id: eventId };
+  if (!isSuperadmin) {
+    query.userId = userId;
+  }
+  const event = await Event.findOne(query);
   if (!event) throw new Error('Événement non trouvé');
 
   // 2. Find Analytics document
@@ -216,4 +247,5 @@ module.exports = {
   addGuestBook,
   getGuestBook,
   getEventAnalytics,
+  replyGuestBook,
 };

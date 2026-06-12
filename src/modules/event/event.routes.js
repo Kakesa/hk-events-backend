@@ -54,7 +54,7 @@ router.use(protect);
 // CREATE EVENT
 router.post(
   '/',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'create'),
   upload.single('coverImage'),
   createEvent
@@ -70,7 +70,7 @@ router.get(
 // GET EVENTS (seulement ceux de l’utilisateur connecté)
 router.get(
   '/',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'read'),
   getEvents
 );
@@ -78,7 +78,7 @@ router.get(
 // GET SINGLE EVENT
 router.get(
   '/:id',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'read'),
   getEvent
 );
@@ -86,7 +86,7 @@ router.get(
 // GET EVENT ANALYTICS
 router.get(
   '/:id/analytics',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'read'),
   getEventAnalytics
 );
@@ -94,7 +94,7 @@ router.get(
 // UPDATE EVENT
 router.put(
   '/:id',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'update'),
   upload.single('coverImage'),
   updateEvent
@@ -103,7 +103,7 @@ router.put(
 // DELETE EVENT
 router.delete(
   '/:id',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'delete'),
   deleteEvent
 );
@@ -111,7 +111,7 @@ router.delete(
 // PUBLISH EVENT
 router.patch(
   '/:id/publish',
-  restrictTo('admin', 'user'),
+  restrictTo('admin', 'user', 'organizer'),
   checkPermission('events', 'update'),
   publishEvent
 );
@@ -119,17 +119,33 @@ router.patch(
 // ADD GUESTBOOK ENTRY
 router.post(
   '/:id/guestbook',
-  restrictTo('admin', 'user'),
-  checkPermission('events', 'update'),
+  restrictTo('admin', 'user', 'organizer'),
+  checkPermission('guestbook', 'update'),
   addGuestBook
 );
 
 // GET GUESTBOOK ENTRIES
 router.get(
   '/:id/guestbook',
-  restrictTo('admin', 'user'),
-  checkPermission('events', 'read'),
+  restrictTo('admin', 'user', 'organizer'),
+  checkPermission('guestbook', 'read'),
   getGuestBook
+);
+
+// REPLY TO A GUESTBOOK MESSAGE
+router.post(
+  '/:id/guestbook/:messageId/reply',
+  restrictTo('admin', 'user', 'organizer'),
+  checkPermission('guestbook', 'update'),
+  (req, res, next) => require('./event.controller').replyGuestBook(req, res, next),
+);
+
+// DOWNLOAD GUESTBOOK (CSV)
+router.get(
+  '/:id/guestbook/download',
+  restrictTo('admin', 'user', 'organizer'),
+  checkPermission('guestbook', 'read'),
+  (req, res, next) => require('./event.controller').downloadGuestBook(req, res, next),
 );
 
 module.exports = router;

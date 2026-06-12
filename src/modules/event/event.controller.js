@@ -61,9 +61,11 @@ const getAllEvents = async (req, res, next) => {
 ======================= */
 const getEvent = async (req, res, next) => {
   try {
+    const isSuperadmin = req.user.role === 'superadmin';
     const event = await eventService.getEventById(
       req.params.id,
-      req.user.id
+      req.user.id,
+      isSuperadmin
     );
 
     res.json({
@@ -80,9 +82,11 @@ const getEvent = async (req, res, next) => {
 ======================= */
 const getEventAnalytics = async (req, res, next) => {
   try {
+    const isSuperadmin = req.user.role === 'superadmin';
     const analytics = await eventService.getEventAnalytics(
       req.params.id,
-      req.user.id
+      req.user.id,
+      isSuperadmin
     );
 
     res.json({
@@ -217,15 +221,69 @@ const addGuestBook = async (req, res, next) => {
 ======================= */
 const getGuestBook = async (req, res, next) => {
   try {
+    const isSuperadmin = req.user.role === 'superadmin';
     const messages = await eventService.getGuestBook(
       req.params.id,
-      req.user.id
+      req.user.id,
+      isSuperadmin
     );
 
     res.json({
       success: true,
       data: messages,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =======================
+   REPLY TO GUESTBOOK MESSAGE
+======================= */
+const replyGuestBook = async (req, res, next) => {
+  try {
+    const { id: eventId, messageId } = req.params;
+
+    const updated = await eventService.replyGuestBook(
+      eventId,
+      req.user.id,
+      messageId,
+      req.body.reply,
+    );
+
+    res.json({ success: true, message: 'Réponse ajoutée', data: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =======================
+   DOWNLOAD GUESTBOOK (CSV)
+======================= */
+const downloadGuestBook = async (req, res, next) => {
+  try {
+    const isSuperadmin = req.user.role === 'superadmin';
+    const messages = await eventService.getGuestBook(
+      req.params.id,
+      req.user.id,
+      isSuperadmin,
+    );
+
+    // Build CSV
+    const header = ['guestName', 'message', 'reply', 'createdAt', 'repliedAt'];
+    const rows = messages.map((m) => [
+      `"${(m.guestName || '').replace(/"/g, '""')}"`,
+      `"${(m.message || '').replace(/"/g, '""')}"`,
+      `"${(m.reply || '').replace(/"/g, '""')}"`,
+      m.createdAt || '',
+      m.repliedAt || '',
+    ]);
+
+    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="guestbook-${req.params.id}.csv"`);
+    res.send(csv);
   } catch (err) {
     next(err);
   }
@@ -247,4 +305,6 @@ module.exports = {
   addGuestBookPublic,
   addGuestBook,
   getGuestBook,
+  replyGuestBook,
+  downloadGuestBook,
 };

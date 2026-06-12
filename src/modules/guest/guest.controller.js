@@ -1,4 +1,5 @@
 const Guest = require('./guest.model');
+const Event = require('../event/event.model');
 
 // ➕ Créer un guest
 exports.createGuest = async (req, res) => {
@@ -13,7 +14,31 @@ exports.createGuest = async (req, res) => {
 // 📄 Guests par événement
 exports.getGuestsByEvent = async (req, res) => {
   try {
-    const guests = await Guest.find({ eventId: req.params.eventId });
+    const eventId = req.params.eventId;
+    const isSuperadmin = req.user.role === 'superadmin';
+    const userId = req.user.id;
+
+    // 1. ✅ Vérifier que l'utilisateur a accès à cet événement
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé'
+      });
+    }
+
+    // Seul le propriétaire ou le superadmin peut voir les guests
+    const isOwner = String(event.userId) === String(userId);
+    if (!isOwner && !isSuperadmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Vous n\'avez pas le droit de voir les invités de cet événement.'
+      });
+    }
+
+    // 2. Récupérer les guests
+    const guests = await Guest.find({ eventId });
     res.json({ success: true, data: guests });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

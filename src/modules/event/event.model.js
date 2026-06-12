@@ -14,6 +14,14 @@ const GuestbookSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Organizer reply
+    reply: {
+      type: String,
+      trim: true,
+    },
+    repliedAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

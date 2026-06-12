@@ -93,8 +93,29 @@ exports.getRecentActivities = async (req, res, next) => {
 exports.getActivitiesByEvent = async (req, res, next) => {
   try {
     const { eventId } = req.params;
+    const isSuperadmin = req.user.role === 'superadmin';
+    const userId = req.user.id;
 
-    // 1. Invités
+    // 1. ✅ Vérifier que l'utilisateur a accès à cet événement
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé'
+      });
+    }
+
+    // Seul le propriétaire ou le superadmin peut voir les activités
+    const isOwner = String(event.userId) === String(userId);
+    if (!isOwner && !isSuperadmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Vous n\'avez pas le droit de voir cet événement.'
+      });
+    }
+
+    // 2. Invités
     const guests = await Guest.find({ eventId })
       .sort({ updatedAt: -1 })
       .limit(20);
@@ -106,8 +127,7 @@ exports.getActivitiesByEvent = async (req, res, next) => {
       time: g.updatedAt
     }));
 
-    // 2. Messages
-    const event = await Event.findById(eventId);
+    // 3. Messages
     const messageActivities = (event?.guestbook || []).map(m => ({
       id: m._id,
       type: 'message',
@@ -115,7 +135,7 @@ exports.getActivitiesByEvent = async (req, res, next) => {
       time: m.createdAt
     }));
 
-    // 3. Fusion
+    // 4. Fusion
     const activities = [...guestActivities, ...messageActivities]
       .sort((a, b) => new Date(b.time) - new Date(a.time))
       .slice(0, 20);

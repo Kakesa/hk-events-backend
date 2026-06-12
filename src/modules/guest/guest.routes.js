@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../../middlewares/auth.middleware');
 
 const {
   createGuest,
@@ -9,13 +10,14 @@ const {
   updateGuestPublic,
 } = require('./guest.controller');
 
-// 🔐 Admin / dashboard
+// 🌍 PUBLIC RSVP (SANS AUTH) - Avant la protection
+router.patch('/public/:id', updateGuestPublic);
+
+// 🔐 Admin / dashboard (protégé)
+router.use(protect);
 router.post('/', createGuest);
 router.get('/event/:eventId', getGuestsByEvent);
 router.patch('/:id', updateGuest);
 router.delete('/:id', deleteGuest);
-
-// 🌍 PUBLIC RSVP (SANS AUTH)
-router.patch('/public/:id', updateGuestPublic);
 
 module.exports = router;

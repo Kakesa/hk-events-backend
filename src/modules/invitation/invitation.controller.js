@@ -1,5 +1,6 @@
 const Invitation = require('./invitation.model');
 const Guest = require('../guest/guest.model');
+const Event = require('../event/event.model');
 const { sendEmail } = require('../../services/email.service');
 
 // ==================== CRUD DE BASE ====================
@@ -18,6 +19,29 @@ exports.createInvitation = async (req, res) => {
 exports.getInvitationsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
+    const isSuperadmin = req.user.role === 'superadmin';
+    const userId = req.user.id;
+
+    // 1. ✅ Vérifier que l'utilisateur a accès à cet événement
+    const Event = require('../event/event.model');
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé'
+      });
+    }
+
+    // Seul le propriétaire ou le superadmin peut voir les invitations
+    const isOwner = String(event.userId) === String(userId);
+    if (!isOwner && !isSuperadmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Vous n\'avez pas le droit de voir les invitations de cet événement.'
+      });
+    }
+
     const invitations = await Invitation.find({ eventId }).populate('guestId');
     res.json({ success: true, data: invitations });
   } catch (err) {

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../../middlewares/auth.middleware');
 
 const {
   createInvitation,
@@ -11,6 +12,9 @@ const {
 } = require('./invitation.controller');
 
 // ==================== CRUD Invitations ====================
+// Protéger toutes les routes sauf public
+router.use(protect);
+
 router.post('/', createInvitation);
 router.get('/event/:eventId', getInvitationsByEvent);
 router.patch('/:id/sent', markSent);
