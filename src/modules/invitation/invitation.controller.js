@@ -89,6 +89,7 @@ const sendMessage = async (guest, method) => {
 exports.sendInvitation = async (req, res) => {
   try {
     let { guestId, method, eventId } = req.body;
+    logger.debug('sendInvitation payload:', { guestId, method, eventId });
     
     // Default method to 'email' if not provided
     method = method || 'email';
@@ -135,6 +136,7 @@ exports.sendInvitation = async (req, res) => {
       const { generateInvitationEmail } = require('../../utils/email-templates');
 
       // Generate professional email HTML
+      logger.debug('Génération du contenu email pour', { guest: guest.name, event: event.title });
       const emailHtml = generateInvitationEmail(
         { name: guest.name, email: guest.email },
         {
@@ -149,6 +151,8 @@ exports.sendInvitation = async (req, res) => {
         rsvpLink
       );
 
+
+      logger.debug('Contenu email généré:', { emailHtml });
       await sendEmail(
         guest.email,
         `Invitation - ${event.title}`,
@@ -159,11 +163,11 @@ exports.sendInvitation = async (req, res) => {
         }
       );
 
-      console.log(`✅ Email envoyé à ${guest.name} (${guest.email})`);
+      logger.debug(`✅ Email envoyé à ${guest.name} (${guest.email})`);
     } else if (method === 'whatsapp' || method === 'sms') {
-      console.log(`📱 Invitation ${method} enregistrée pour ${guest.name} (${guest.phone})`);
+      logger.debug(`📱 Invitation ${method} enregistrée pour ${guest.name} (${guest.phone})`);
     } else {
-      console.log(`Simulation ${method} à ${guest.name} (${guest.phone || guest.email})`);
+      logger.debug(`Simulation ${method} à ${guest.name} (${guest.phone || guest.email})`);
     }
 
     // Créer ou mettre à jour invitation
@@ -183,7 +187,7 @@ exports.sendInvitation = async (req, res) => {
       data: invitation 
     });
   } catch (err) {
-    console.error('❌ Erreur sendInvitation:', err);
+    logger.error('❌ Erreur sendInvitation:', err);
     res.status(500).json({ 
       success: false, 
       message: 'Erreur lors de l\'envoi de l\'invitation',
