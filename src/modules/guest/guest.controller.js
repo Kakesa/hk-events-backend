@@ -1,13 +1,34 @@
 const Guest = require('./guest.model');
 const Event = require('../event/event.model');
+const { normalizePhoneToE164 } = require('../../utils/phone');
+
+const sanitizeGuestPayload = (payload = {}) => {
+  const data = { ...payload };
+
+  if (data.phone !== undefined && data.phone !== null && String(data.phone).trim()) {
+    const normalized = normalizePhoneToE164(data.phone);
+    if (!normalized) {
+      const error = new Error(
+        'Numéro de téléphone invalide. Utilisez le format +243XXXXXXXXX'
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+    data.phone = normalized;
+  } else if (data.phone === '') {
+    data.phone = undefined;
+  }
+
+  return data;
+};
 
 // ➕ Créer un guest
 exports.createGuest = async (req, res) => {
   try {
-    const guest = await Guest.create(req.body);
+    const guest = await Guest.create(sanitizeGuestPayload(req.body));
     res.status(201).json({ success: true, data: guest });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(err.statusCode || 400).json({ success: false, message: err.message });
   }
 };
 
@@ -50,7 +71,7 @@ exports.updateGuest = async (req, res) => {
   try {
     const guest = await Guest.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      sanitizeGuestPayload(req.body),
       { new: true }
     );
 
