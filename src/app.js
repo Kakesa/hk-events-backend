@@ -5,37 +5,14 @@ require('dotenv').config();
 
 const routes = require('./routes');
 const { errorHandler } = require('./middlewares/error.middleware');
+const { getAllowedOrigins, corsOptions } = require('./config/cors');
 
 const app = express();
 
-const allowedOrigins = new Set(
-  [
-    process.env.CORS_ORIGIN,
-    process.env.FRONTEND_URL,
-    process.env.NODE_ENV !== 'production' ? 'http://localhost:8080' : null,
-    process.env.NODE_ENV !== 'production' ? 'http://127.0.0.1:8080' : null,
-  ]
-    .filter(Boolean)
-    .flatMap((value) => value.split(','))
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-);
+const allowedOrigins = getAllowedOrigins();
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
-  optionsSuccessStatus: 204,
-};
-
-app.use(cors(corsOptions));
+app.use(cors(corsOptions(allowedOrigins)));
+app.options(/.*/, cors(corsOptions(allowedOrigins)));
 
 app.use(express.json({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: true }));
