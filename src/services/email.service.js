@@ -68,6 +68,7 @@ const formatSmtpError = (err) => {
 };
 
 const verifyEmailTransport = async () => {
+  console.log('🔍 Vérification de la configuration SMTP...');
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn('⚠️  EMAIL_USER / EMAIL_PASS non configurés — envoi email désactivé');
     return false;
