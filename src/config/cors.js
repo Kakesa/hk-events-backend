@@ -33,7 +33,8 @@ const corsOptions = (allowedOrigins) => ({
       return callback(null, true);
     }
 
-    return callback(new Error(`Not allowed by CORS: ${origin}`));
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -41,8 +42,20 @@ const corsOptions = (allowedOrigins) => ({
   optionsSuccessStatus: 204,
 });
 
+const applyCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = getAllowedOrigins();
+
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+};
+
 module.exports = {
   getAllowedOrigins,
   corsOptions,
+  applyCorsHeaders,
   DEFAULT_PRODUCTION_ORIGINS,
 };

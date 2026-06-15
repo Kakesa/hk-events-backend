@@ -1,0 +1,35 @@
+# Nginx — API backend (api.hkeventscd.com)
+# Copier vers /etc/nginx/sites-available/api.hkeventscd.com puis :
+#   sudo ln -sf /etc/nginx/sites-available/api.hkeventscd.com /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+
+server {
+    listen 80;
+    server_name api.hkeventscd.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.hkeventscd.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.hkeventscd.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.hkeventscd.com/privkey.pem;
+
+    # Templates d'invitation HTML (bulk email)
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Éviter 504 pendant l'envoi d'invitations en masse
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+}

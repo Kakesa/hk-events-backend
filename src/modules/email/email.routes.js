@@ -40,7 +40,7 @@ router.post('/history/:id/resend', protect, restrictTo('admin', 'superadmin'), a
 });
 
 // Envoi en masse d'invitations
-router.post('/invitation/bulk', protect, restrictTo('admin', 'superadmin'), async (req, res, next) => {
+router.post('/invitation/bulk', protect, async (req, res, next) => {
   try {
     await sendBulkInvitations(req, res, next);
   } catch (err) {

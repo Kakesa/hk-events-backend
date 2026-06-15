@@ -233,25 +233,31 @@ exports.sendBulkInvitations = async (req, res) => {
       errors: []
     };
 
-    // Import email template generator (for fallback)
     const { generateInvitationEmail } = require('../../utils/email-templates');
+    const { getEventTypeWithArticle } = require('../../utils/eventType');
 
-    // Helper to replace variables in custom templates
     const replaceVariables = (text, guest, event, rsvpLink) => {
+      if (!text) return text;
+
       const eventDate = new Date(event.date).toLocaleDateString('fr-FR', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
 
-      return text
-        .replace(/{{eventName}}/g, event.title)
+      const eventTypeWithArticle = getEventTypeWithArticle(event.type);
+
+      return String(text)
+        .replace(/{{eventName}}/g, event.title || '')
         .replace(/{{eventDate}}/g, eventDate)
-        .replace(/{{eventLocation}}/g, event.location)
-        .replace(/{{guestName}}/g, guest.name)
-        .replace(/{{organizerName}}/g, event.userId?.name || 'L\'équipe organisatrice')
-        .replace(/{{rsvpLink}}/g, rsvpLink);
+        .replace(/{{eventLocation}}/g, event.location || '')
+        .replace(/{{guestName}}/g, guest.name || '')
+        .replace(/{{organizerName}}/g, event.userId?.name || "L'équipe organisatrice")
+        .replace(/{{rsvpLink}}/g, rsvpLink)
+        .replace(/{{eventType}}/g, event.type || 'Événement')
+        .replace(/{{eventTypeWithArticle}}/g, eventTypeWithArticle)
+        .replace(/{{customMessage}}/g, customMessage || '');
     };
 
     for (const guestId of guestIds) {
