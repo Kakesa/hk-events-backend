@@ -1,5 +1,6 @@
 const User = require('../users/users.model');
 const jwt = require('jsonwebtoken');
+const { getPermissionsForRole } = require('../../constants/permissions');
 
 /* =====================================================
    HELPERS
@@ -161,25 +162,60 @@ const updatePermissions = async (userId, permissions) => {
 /* =====================================================
    UPDATE USER (GENERAL)
 ===================================================== */
+const ASSIGNABLE_ROLES = ['user', 'admin', 'organizer'];
+
 const updateUser = async (userId, updateData) => {
-  // 🔒 Sécurité : ne pas permettre de changer le mot de passe ici
   delete updateData.password;
-  
-  if (updateData.email) {
-    updateData.email = normalizeEmail(updateData.email);
-  }
 
-  const user = await User.findByIdAndUpdate(
-    userId,
-    { $set: updateData },
-    { new: true, runValidators: true }
-  ).select('-password');
-
+  const user = await User.findById(userId);
   if (!user) {
     throw new Error('Utilisateur introuvable');
   }
 
-  return user;
+  if (user.role === 'superadmin') {
+    delete updateData.role;
+  }
+
+  if (updateData.role !== undefined) {
+    if (updateData.role === 'superadmin') {
+      throw new Error('Impossible de promouvoir en superadmin via cette action');
+    }
+
+    if (!ASSIGNABLE_ROLES.includes(updateData.role)) {
+      throw new Error('Rôle invalide');
+    }
+
+    if (updateData.role !== user.role && !updateData.permissions) {
+      updateData.permissions = getPermissionsForRole(updateData.role);
+    }
+  }
+
+  if (updateData.email) {
+    updateData.email = normalizeEmail(updateData.email);
+  }
+
+  const allowedFields = [
+    'name',
+    'email',
+    'phone',
+    'subscriptionType',
+    'isActive',
+    'role',
+    'permissions',
+  ];
+
+  allowedFields.forEach((field) => {
+    if (updateData[field] !== undefined) {
+      user[field] = updateData[field];
+    }
+  });
+
+  await user.save();
+
+  const updatedUser = user.toObject();
+  delete updatedUser.password;
+
+  return updatedUser;
 };
 
 /* =====================================================

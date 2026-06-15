@@ -1,29 +1,13 @@
 const Event = require('./event.model');
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const slugify = require('slugify');
 const Analytics = require('../analytics/analytics.model');
 const Guest = require('../guest/guest.model');
-
-const UPLOAD_DIR = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const { uploadImage } = require('../../services/cloudinary.service');
 
 // =======================
 // FILE HANDLING
 // =======================
-const saveFileLocal = async (file) => {
-  if (!file) return null;
-
-  const fileName = `${uuidv4()}-${file.originalname}`;
-  const filePath = path.join(UPLOAD_DIR, fileName);
-
-  if (file.buffer) await fs.promises.writeFile(filePath, file.buffer);
-  else if (file.path) await fs.promises.copyFile(file.path, filePath);
-  else throw new Error('Fichier invalide');
-
-  return `/uploads/${fileName}`;
-};
+const saveCoverImage = async (file) => uploadImage(file, 'hk-events/covers');
 
 // =======================
 // SLUG GENERATOR
@@ -59,7 +43,7 @@ const createEvent = async (eventData, file) => {
     slug: await generateUniqueSlug(eventData.title),
   };
 
-  if (file) data.coverImage = await saveFileLocal(file);
+  if (file) data.coverImage = await saveCoverImage(file);
 
   const event = await Event.create(data);
   
@@ -100,7 +84,7 @@ const getEventById = async (eventId, userId, isSuperadmin = false) => {
 // UPDATE EVENT
 // =======================
 const updateEvent = async (eventId, userId, data, file) => {
-  if (file) data.coverImage = await saveFileLocal(file);
+  if (file) data.coverImage = await saveCoverImage(file);
   delete data.slug;
   delete data.invitationLink;
 
