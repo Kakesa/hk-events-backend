@@ -17,5 +17,6 @@ module.exports = (app) => {
   app.use('/api/invitations', invitationRoutes);
   app.use('/api/public', rsvpRoutes);
   app.use('/api/payments', require('./modules/payment/payment.routes'));
+  app.use('/api/whatsapp-log', require('./modules/whatsapp-log/whatsapp-log.routes'));
   
 };

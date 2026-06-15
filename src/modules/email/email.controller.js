@@ -49,29 +49,36 @@ exports.getEmailAnalytics = async (req, res, next) => {
     const { eventId } = req.query;
     const query = eventId ? { eventId } : {};
 
-    const [totalSent, delivered, failed, opened, clicked] = await Promise.all([
+    const [totalSent, delivered, failed, opened, clicked, bounced] = await Promise.all([
       EmailLog.countDocuments(query),
       EmailLog.countDocuments({ ...query, status: 'delivered' }),
       EmailLog.countDocuments({ ...query, status: 'failed' }),
       EmailLog.countDocuments({ ...query, status: 'opened' }),
       EmailLog.countDocuments({ ...query, status: 'clicked' }),
+      EmailLog.countDocuments({ ...query, status: 'bounced' }),
     ]);
 
-    // Calcul des taux (simulation/réel)
-    // Pour l'instant on assume sent = delivered si pas failed
-    const realDelivered = totalSent - failed; 
+    const realDelivered = Math.max(totalSent - failed, 0);
 
     const deliveryRate = totalSent > 0 ? (realDelivered / totalSent) * 100 : 0;
     const openRate = realDelivered > 0 ? (opened / realDelivered) * 100 : 0;
     const clickRate = opened > 0 ? (clicked / opened) * 100 : 0;
+    const bounceRate = totalSent > 0 ? (bounced / totalSent) * 100 : 0;
 
     res.json({
       success: true,
       data: {
         totalSent,
+        totalDelivered: realDelivered,
+        totalOpened: opened,
+        totalClicked: clicked,
+        totalBounced: bounced,
+        totalFailed: failed,
         deliveryRate,
         openRate,
         clickRate,
+        bounceRate,
+        lastUpdated: new Date().toISOString(),
       },
     });
   } catch (err) {
