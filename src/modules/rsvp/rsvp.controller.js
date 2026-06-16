@@ -127,6 +127,25 @@ exports.submitRSVP = async (req, res) => {
 
     await guest.save();
 
+    // Synchroniser le message dans le livre d'or de l'événement
+    if (message?.trim()) {
+      const event = await Event.findById(guest.eventId);
+      if (event) {
+        const existing = event.guestbook.find(
+          (e) => e.guestName === guest.name,
+        );
+        if (existing) {
+          existing.message = message.trim();
+        } else {
+          event.guestbook.push({
+            guestName: guest.name,
+            message: message.trim(),
+          });
+        }
+        await event.save();
+      }
+    }
+
     res.json({
       success: true,
       message: "RSVP enregistré",
@@ -302,6 +321,22 @@ exports.registerPublicGuest = async (req, res) => {
     }
 
     await guest.save();
+
+    // Synchroniser le message dans le livre d'or de l'événement
+    if (message?.trim()) {
+      const existing = event.guestbook.find(
+        (e) => e.guestName === guest.name,
+      );
+      if (existing) {
+        existing.message = message.trim();
+      } else {
+        event.guestbook.push({
+          guestName: guest.name,
+          message: message.trim(),
+        });
+      }
+      await event.save();
+    }
 
     res.status(201).json({
       success: true,
