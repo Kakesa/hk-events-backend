@@ -35,9 +35,9 @@ exports.ensureGuestQrCode = async (guest) => {
       guest._id.toString(),
     );
     guest.qrGeneratedAt = new Date();
-    await guest.save();
   }
 
+  await guest.save();
   return guest.qrCode;
 };
 

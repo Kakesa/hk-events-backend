@@ -122,9 +122,9 @@ exports.submitRSVP = async (req, res) => {
 
     if (status === "confirmed") {
       await ensureGuestQrCode(guest);
+    } else {
+      await guest.save();
     }
-
-    await guest.save();
 
     // Synchroniser le message dans le livre d'or de l'événement
     if (message?.trim()) {
@@ -335,10 +335,6 @@ exports.registerPublicGuest = async (req, res) => {
       await guest.save();
     }
 
-    if (status !== "confirmed") {
-      await guest.save();
-    }
-
     // Synchroniser le message dans le livre d'or de l'événement
     if (message?.trim()) {
       const existing = event.guestbook.find(
@@ -363,6 +359,42 @@ exports.registerPublicGuest = async (req, res) => {
 
   } catch (err) {
     console.error("registerPublicGuest error:", err);
+    res.status(500).json({ success: false, message: "Erreur serveur" });
+  }
+};
+
+/* =====================================================
+   GENERATE QR
+   POST /api/public/rsvp/:guestId/generate-qr
+===================================================== */
+exports.generateGuestQr = async (req, res) => {
+  try {
+    const { guestId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(guestId)) {
+      return res.status(400).json({ success: false, message: "ID invité invalide" });
+    }
+
+    const guest = await Guest.findById(guestId);
+    if (!guest) {
+      return res.status(404).json({ success: false, message: "Invité introuvable" });
+    }
+
+    if (guest.status !== "confirmed") {
+      return res.status(400).json({
+        success: false,
+        message: "QR code disponible uniquement pour les invités confirmés",
+      });
+    }
+
+    const qrCode = await ensureGuestQrCode(guest);
+
+    res.json({
+      success: true,
+      data: { qrCode, code: qrCode },
+    });
+  } catch (err) {
+    console.error("generateGuestQr error:", err);
     res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 };
