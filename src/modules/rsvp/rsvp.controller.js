@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Event = require("../event/event.model");
 const Guest = require("../guest/guest.model");
-const { generateQRCode, parseScanToken, ensureGuestQrCode } = require("../../utils/qr");
+const { parseScanToken, ensureGuestQrCode } = require("../../utils/qr");
 const { getEventEndDateTime } = require("../../utils/eventTime");
 const eventService = require("../event/event.service");
 
