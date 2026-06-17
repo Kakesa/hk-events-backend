@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Event = require("../event/event.model");
 const Guest = require("../guest/guest.model");
-const { generateQRCode } = require("../../utils/qr");
+const { generateQRCode, parseScanToken, ensureGuestQrCode } = require("../../utils/qr");
 const { getEventEndDateTime } = require("../../utils/eventTime");
 const eventService = require("../event/event.service");
 
@@ -36,11 +36,9 @@ exports.getPublicRSVP = async (req, res) => {
       });
     }
 
-    // 🎯 Génération automatique du QR
-    if (!guest.qrCode) {
-      guest.qrCode = generateQRCode(eventId, guestId);
-      guest.qrGeneratedAt = new Date();
-      await guest.save();
+    // QR uniquement pour invités confirmés
+    if (guest.status === "confirmed") {
+      await ensureGuestQrCode(guest);
     }
 
     res.json({
@@ -49,12 +47,15 @@ exports.getPublicRSVP = async (req, res) => {
         event: {
           id: event._id,
           title: event.title,
+          type: event.type,
           description: event.description,
           date: event.date,
           startTime: event.startTime,
           endTime: event.endTime,
           location: event.location,
           coverImage: event.coverImage,
+          primaryColor: event.primaryColor,
+          accentColor: event.accentColor,
         },
         guest: {
           id: guest._id,
@@ -64,7 +65,7 @@ exports.getPublicRSVP = async (req, res) => {
           drinkPreference: guest.drinkPreference,
           dietaryRestrictions: guest.dietaryRestrictions,
           message: guest.message,
-          qrCode: guest.qrCode,
+          qrCode: guest.status === "confirmed" ? guest.qrCode : undefined,
         },
       },
     });
@@ -119,10 +120,8 @@ exports.submitRSVP = async (req, res) => {
     guest.message = message || "";
     guest.respondedAt = new Date();
 
-    // 🔐 QR généré uniquement si confirmé
-    if (status === "confirmed" && !guest.qrCode) {
-      guest.qrCode = generateQRCode(guest.eventId.toString(), guestId);
-      guest.qrGeneratedAt = new Date();
+    if (status === "confirmed") {
+      await ensureGuestQrCode(guest);
     }
 
     await guest.save();
@@ -163,9 +162,25 @@ exports.submitRSVP = async (req, res) => {
 ===================================================== */
 exports.checkInByQR = async (req, res) => {
   try {
-    const { qrCode } = req.params;
+    const token = parseScanToken(req.params.qrCode);
 
-    const guest = await Guest.findOne({ qrCode }).populate("eventId");
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "QR code invalide",
+      });
+    }
+
+    let guest = await Guest.findOne({ qrCode: token }).populate("eventId");
+
+    // Compatibilité : anciens QR contenant seulement l'ID invité
+    if (!guest && mongoose.Types.ObjectId.isValid(token)) {
+      guest = await Guest.findById(token).populate("eventId");
+      if (guest?.status === "confirmed") {
+        await ensureGuestQrCode(guest);
+      }
+    }
+
     if (!guest) {
       return res.status(404).json({
         success: false,
@@ -314,13 +329,15 @@ exports.registerPublicGuest = async (req, res) => {
       });
     }
 
-    // Generate QR if confirmed
-    if (status === "confirmed" && !guest.qrCode) {
-      guest.qrCode = generateQRCode(eventId, guest._id.toString());
-      guest.qrGeneratedAt = new Date();
+    if (status === "confirmed") {
+      await ensureGuestQrCode(guest);
+    } else {
+      await guest.save();
     }
 
-    await guest.save();
+    if (status !== "confirmed") {
+      await guest.save();
+    }
 
     // Synchroniser le message dans le livre d'or de l'événement
     if (message?.trim()) {
