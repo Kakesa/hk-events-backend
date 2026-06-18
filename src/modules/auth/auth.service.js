@@ -19,6 +19,21 @@ const generateToken = (user) => {
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
+const serializeUser = (user) => ({
+  _id: user._id,
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  permissions: user.permissions,
+  subscriptionType: user.subscriptionType,
+  planLimitsBypass: user.planLimitsBypass === true,
+  isActive: user.isActive,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
 /* =====================================================
    REGISTER
 ===================================================== */
@@ -62,14 +77,7 @@ const register = async (data) => {
 
   return {
     token,
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      permissions: user.permissions,
-      subscriptionType: user.subscriptionType,
-    },
+    user: serializeUser(user),
   };
 };
 
@@ -99,14 +107,7 @@ const login = async ({ email, password }) => {
 
   return {
     token,
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      permissions: user.permissions,
-      subscriptionType: user.subscriptionType,
-    },
+    user: serializeUser(user),
   };
 };
 
@@ -199,6 +200,7 @@ const updateUser = async (userId, updateData) => {
     'email',
     'phone',
     'subscriptionType',
+    'planLimitsBypass',
     'isActive',
     'role',
     'permissions',
@@ -245,13 +247,7 @@ const impersonate = async (targetUserId) => {
 
   return {
     token,
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      subscriptionType: user.subscriptionType,
-    },
+    user: serializeUser(user),
   };
 };
 

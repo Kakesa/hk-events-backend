@@ -67,6 +67,10 @@ const userSchema = new mongoose.Schema(
       enum: ['free', 'basic', 'premium', 'enterprise'],
       default: 'free',
     },
+    planLimitsBypass: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -1,10 +1,15 @@
 const eventService = require('./event.service');
+const { assertCanCreateEvent } = require('../../utils/subscriptionLimits');
 
 /* =======================
    CREATE EVENT
 ======================= */
 const createEvent = async (req, res, next) => {
   try {
+    if (req.user.role !== 'superadmin') {
+      await assertCanCreateEvent(req.user);
+    }
+
     const file = req.file || null;
 
     const eventData = {
@@ -83,6 +88,11 @@ const getEvent = async (req, res, next) => {
 const getEventAnalytics = async (req, res, next) => {
   try {
     const isSuperadmin = req.user.role === 'superadmin';
+    if (!isSuperadmin) {
+      const { assertAdvancedAnalytics } = require('../../utils/subscriptionLimits');
+      assertAdvancedAnalytics(req.user);
+    }
+
     const analytics = await eventService.getEventAnalytics(
       req.params.id,
       req.user.id,

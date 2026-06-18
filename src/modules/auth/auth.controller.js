@@ -1,6 +1,7 @@
 const authService = require('./auth.service');
 const User = require('../users/users.model');
 const { createAudit } = require('../audit/audit.service');
+const { getSubscriptionLimitsStatus } = require('../../utils/subscriptionLimits');
 
 /* =====================================================
    REGISTER
@@ -57,6 +58,15 @@ const me = async (req, res, next) => {
   }
 };
 
+const getSubscriptionLimits = async (req, res, next) => {
+  try {
+    const eventId = req.query.eventId || null;
+    const data = await getSubscriptionLimitsStatus(req.user, eventId);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
 
 /* =====================================================
    GET ALL USERS (ADMIN)
@@ -238,6 +248,7 @@ module.exports = {
   register,
   login,
   me,
+  getSubscriptionLimits,
   getAllUsers,
   getAdmins,
   updatePermissions,

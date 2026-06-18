@@ -10,6 +10,7 @@ const {
   updateUser,
   impersonate,
   deleteUser,
+  getSubscriptionLimits,
 } = require('./auth.controller');
 
 const { registerValidation, loginValidation } = require('./auth.validation');
@@ -24,6 +25,7 @@ router.post('/login', loginValidation, validate, login);
 router.get('/me', protect, (req, res) => {
   res.json({ success: true, data: req.user });
 });
+router.get('/subscription-limits', protect, getSubscriptionLimits);
 
 // ✨ USERS (SUPERADMIN ONLY)
 router.get(

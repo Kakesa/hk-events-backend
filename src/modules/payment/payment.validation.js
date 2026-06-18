@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { PAYABLE_PLANS, getPlanPrice } = require('../../constants/subscriptionPlans');
 
 exports.initiatePaymentValidation = [
   body('amount')
@@ -8,7 +9,14 @@ exports.initiatePaymentValidation = [
 
   body('plan')
     .notEmpty().withMessage('Plan requis')
-    .isIn(['basic', 'premium', 'enterprise']).withMessage('Plan invalide'),
+    .isIn(PAYABLE_PLANS).withMessage('Plan invalide')
+    .custom((plan, { req }) => {
+      const expected = getPlanPrice(plan);
+      if (Number(req.body.amount) !== expected) {
+        throw new Error(`Montant incorrect pour le plan ${plan}`);
+      }
+      return true;
+    }),
 
   body('currency')
     .optional()

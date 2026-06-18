@@ -1,6 +1,7 @@
 const Guest = require('./guest.model');
 const Event = require('../event/event.model');
 const { normalizePhoneToE164 } = require('../../utils/phone');
+const { assertCanAddGuest } = require('../../utils/subscriptionLimits');
 
 const sanitizeGuestPayload = (payload = {}) => {
   const data = { ...payload };
@@ -25,10 +26,19 @@ const sanitizeGuestPayload = (payload = {}) => {
 // ➕ Créer un guest
 exports.createGuest = async (req, res) => {
   try {
+    const eventId = req.body.eventId;
+    if (!eventId) {
+      return res.status(400).json({ success: false, message: 'eventId requis' });
+    }
+
+    if (req.user.role !== 'superadmin') {
+      await assertCanAddGuest(req.user, eventId);
+    }
+
     const guest = await Guest.create(sanitizeGuestPayload(req.body));
     res.status(201).json({ success: true, data: guest });
   } catch (err) {
-    res.status(err.statusCode || 400).json({ success: false, message: err.message });
+    res.status(err.statusCode || 400).json({ success: false, message: err.message, code: err.code });
   }
 };
 
