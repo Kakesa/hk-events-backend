@@ -3,6 +3,7 @@ const slugify = require('slugify');
 const Analytics = require('../analytics/analytics.model');
 const Guest = require('../guest/guest.model');
 const { uploadImage } = require('../../services/cloudinary.service');
+const { computeDrinkStats } = require('../../utils/drinkStats');
 
 // =======================
 // FILE HANDLING
@@ -211,7 +212,23 @@ const getEventAnalytics = async (eventId, userId, isSuperadmin = false) => {
     });
   }
 
-  return analytics;
+  const confirmedGuests = await Guest.find({ eventId, status: 'confirmed' }).select(
+    'drinkPreference status',
+  );
+  const drinkStats = computeDrinkStats(confirmedGuests);
+
+  const analyticsObj = analytics.toObject();
+  analyticsObj.id = analyticsObj._id.toString();
+  analyticsObj.preferredDrinksStats = drinkStats.preferredDrinksStats;
+  analyticsObj.alcoholicDrinksStats = drinkStats.alcoholicDrinksStats;
+  analyticsObj.softDrinksStats = drinkStats.softDrinksStats;
+  analyticsObj.drinkCategoryStats = drinkStats.drinkCategoryStats;
+
+  if (analyticsObj.preferredDrinksStats instanceof Map) {
+    analyticsObj.preferredDrinksStats = Object.fromEntries(analyticsObj.preferredDrinksStats);
+  }
+
+  return analyticsObj;
 };
 
 // =======================
