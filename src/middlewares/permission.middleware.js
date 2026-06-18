@@ -1,8 +1,11 @@
 const checkPermission = (module, action) => {
   return (req, res, next) => {
 
-    // 🔥 ADMIN = accès total
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      return next();
+    }
+
+    if (req.user.subscriptionType === 'premium' || req.user.subscriptionType === 'enterprise') {
       return next();
     }
 

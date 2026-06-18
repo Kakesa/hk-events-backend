@@ -19,20 +19,28 @@ const generateToken = (user) => {
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
-const serializeUser = (user) => ({
-  _id: user._id,
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  phone: user.phone,
-  role: user.role,
-  permissions: user.permissions,
-  subscriptionType: user.subscriptionType,
-  planLimitsBypass: user.planLimitsBypass === true,
-  isActive: user.isActive,
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
-});
+const serializeUser = (user) => {
+  const isPremiumAccess =
+    user.subscriptionType === 'premium' || user.subscriptionType === 'enterprise';
+
+  return {
+    _id: user._id,
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    permissions: isPremiumAccess
+      ? getPermissionsForRole('admin')
+      : user.permissions,
+    subscriptionType: user.subscriptionType,
+    planLimitsBypass: user.planLimitsBypass === true,
+    guestPriceFc: user.guestPriceFc ?? null,
+    isActive: user.isActive,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+};
 
 /* =====================================================
    REGISTER
@@ -201,6 +209,7 @@ const updateUser = async (userId, updateData) => {
     'phone',
     'subscriptionType',
     'planLimitsBypass',
+    'guestPriceFc',
     'isActive',
     'role',
     'permissions',

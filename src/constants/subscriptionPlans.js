@@ -21,7 +21,7 @@ const SUBSCRIPTION_PLANS = {
   premium: {
     price: 79,
     maxEvents: 1,
-    maxGuests: 200,
+    maxGuests: null,
     customizableTemplates: true,
     advancedAnalytics: true,
     emailSupport: true,

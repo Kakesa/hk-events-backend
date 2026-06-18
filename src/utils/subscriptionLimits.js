@@ -1,6 +1,17 @@
 const Event = require('../modules/event/event.model');
 const Guest = require('../modules/guest/guest.model');
 const { getPlanDefinition } = require('../constants/subscriptionPlans');
+const {
+  getPlatformSettings,
+  getEffectiveGuestPriceFc,
+  calculateGuestBilling,
+  NEGOTIATED_GUEST_PRICES_FC,
+} = require('./guestPricing');
+const { getPermissionsForRole } = require('../constants/permissions');
+
+function hasPremiumAdminAccess(user) {
+  return user?.subscriptionType === 'premium' || user?.subscriptionType === 'enterprise';
+}
 
 function isLimitsBypassed(user) {
   if (!user) return false;
@@ -33,11 +44,30 @@ function getEffectiveLimits(user) {
 
 async function getSubscriptionLimitsStatus(user, eventId = null) {
   const limits = getEffectiveLimits(user);
+  const platformSettings = await getPlatformSettings();
+  const pricePerGuestFc = getEffectiveGuestPriceFc(user, platformSettings);
   const eventCount = await Event.countDocuments({ userId: user._id || user.id });
+
+  let totalGuestCount = 0;
+  if (eventId) {
+    const event = await Event.findById(eventId);
+    if (event && String(event.userId) === String(user._id || user.id)) {
+      totalGuestCount = await Guest.countDocuments({ eventId });
+    }
+  } else {
+    const userEvents = await Event.find({ userId: user._id || user.id }).select('_id');
+    const eventIds = userEvents.map((e) => e._id);
+    if (eventIds.length > 0) {
+      totalGuestCount = await Guest.countDocuments({ eventId: { $in: eventIds } });
+    }
+  }
+
+  const billing = calculateGuestBilling(totalGuestCount, pricePerGuestFc);
 
   const status = {
     plan: user.subscriptionType || 'free',
     planLimitsBypass: isLimitsBypassed(user),
+    hasPremiumAdminAccess: hasPremiumAdminAccess(user),
     maxEvents: limits.maxEvents,
     maxGuests: limits.maxGuests,
     eventCount,
@@ -45,6 +75,10 @@ async function getSubscriptionLimitsStatus(user, eventId = null) {
       limits.maxEvents === null || eventCount < limits.maxEvents,
     customizableTemplates: limits.customizableTemplates,
     advancedAnalytics: limits.advancedAnalytics,
+    pricePerGuestFc,
+    defaultGuestPriceFc: platformSettings.defaultGuestPriceFc,
+    negotiatedPricesFc: NEGOTIATED_GUEST_PRICES_FC,
+    billing,
   };
 
   if (eventId) {
@@ -60,6 +94,7 @@ async function getSubscriptionLimitsStatus(user, eventId = null) {
       !isOwner ||
       limits.maxGuests === null ||
       guestCount < limits.maxGuests;
+    status.eventBilling = calculateGuestBilling(guestCount, pricePerGuestFc);
   }
 
   return status;
@@ -138,6 +173,7 @@ function assertCustomTemplates(user) {
 
 module.exports = {
   isLimitsBypassed,
+  hasPremiumAdminAccess,
   getEffectiveLimits,
   getSubscriptionLimitsStatus,
   assertCanCreateEvent,

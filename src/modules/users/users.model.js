@@ -71,6 +71,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    guestPriceFc: {
+      type: Number,
+      default: null,
+    },
   },
   {
     timestamps: true,
