@@ -211,7 +211,17 @@ exports.checkInByQR = async (req, res) => {
         success: false,
         message: "Invité déjà enregistré",
         data: {
+          alreadyCheckedIn: true,
           checkedInAt: guest.checkedInAt,
+          guest: {
+            id: guest._id,
+            name: guest.name,
+            table: guest.table || null,
+          },
+          event: {
+            id: guest.eventId._id,
+            title: guest.eventId.title,
+          },
         },
       });
     }
@@ -228,6 +238,7 @@ exports.checkInByQR = async (req, res) => {
         guest: {
           id: guest._id,
           name: guest.name,
+          table: guest.table || null,
           checkedInAt: guest.checkedInAt,
         },
         event: {
