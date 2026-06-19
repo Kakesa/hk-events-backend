@@ -49,9 +49,10 @@ const login = async (req, res, next) => {
 ===================================================== */
 const me = async (req, res, next) => {
   try {
+    const user = await authService.getCurrentUser(req.user._id);
     res.status(200).json({
       success: true,
-      data: req.user,
+      data: user,
     });
   } catch (err) {
     next(err);
@@ -63,6 +64,27 @@ const getSubscriptionLimits = async (req, res, next) => {
     const eventId = req.query.eventId || null;
     const data = await getSubscriptionLimitsStatus(req.user, eventId);
     res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  try {
+    const user = await authService.updateProfile(
+      req.user._id,
+      {
+        name: req.body.name,
+        email: req.body.email,
+        phone: req.body.phone,
+      },
+      req.file,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
   } catch (err) {
     next(err);
   }
@@ -275,6 +297,7 @@ module.exports = {
   register,
   login,
   me,
+  updateProfile,
   forgotPassword,
   resetPassword,
   googleAuth,

@@ -45,6 +45,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    avatarUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
     password: {
       type: String,
       default: null,

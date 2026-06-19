@@ -7,6 +7,7 @@ const {
   forgotPassword,
   resetPassword,
   googleAuth,
+  me,
   getAllUsers,
   getAdmins,
   updatePermissions,
@@ -14,6 +15,7 @@ const {
   impersonate,
   deleteUser,
   getSubscriptionLimits,
+  updateProfile,
 } = require('./auth.controller');
 
 const {
@@ -25,6 +27,7 @@ const {
 } = require('./auth.validation');
 const { validate } = require('../../middlewares/validate.middleware');
 const { protect } = require('../../middlewares/auth.middleware');
+const upload = require('../../middlewares/upload');
 const { restrictTo } = require('../../middlewares/role.middleware');
 const { checkPermission } = require('../../middlewares/permission.middleware');
 
@@ -34,9 +37,8 @@ router.post('/login', loginValidation, validate, login);
 router.post('/forgot-password', forgotPasswordValidation, validate, forgotPassword);
 router.post('/reset-password', resetPasswordValidation, validate, resetPassword);
 router.post('/google', googleAuthValidation, validate, googleAuth);
-router.get('/me', protect, (req, res) => {
-  res.json({ success: true, data: req.user });
-});
+router.get('/me', protect, me);
+router.patch('/profile', protect, upload.single('avatar'), updateProfile);
 router.get('/subscription-limits', protect, getSubscriptionLimits);
 
 // ✨ USERS (SUPERADMIN ONLY)
