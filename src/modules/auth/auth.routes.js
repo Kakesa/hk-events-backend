@@ -4,6 +4,9 @@ const router = express.Router();
 const {
   register,
   login,
+  forgotPassword,
+  resetPassword,
+  googleAuth,
   getAllUsers,
   getAdmins,
   updatePermissions,
@@ -13,7 +16,13 @@ const {
   getSubscriptionLimits,
 } = require('./auth.controller');
 
-const { registerValidation, loginValidation } = require('./auth.validation');
+const {
+  registerValidation,
+  loginValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
+  googleAuthValidation,
+} = require('./auth.validation');
 const { validate } = require('../../middlewares/validate.middleware');
 const { protect } = require('../../middlewares/auth.middleware');
 const { restrictTo } = require('../../middlewares/role.middleware');
@@ -22,6 +31,9 @@ const { checkPermission } = require('../../middlewares/permission.middleware');
 // AUTH
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
+router.post('/forgot-password', forgotPasswordValidation, validate, forgotPassword);
+router.post('/reset-password', resetPasswordValidation, validate, resetPassword);
+router.post('/google', googleAuthValidation, validate, googleAuth);
 router.get('/me', protect, (req, res) => {
   res.json({ success: true, data: req.user });
 });

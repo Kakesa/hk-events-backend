@@ -1,6 +1,9 @@
 const User = require('../users/users.model');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const { getPermissionsForRole } = require('../../constants/permissions');
+const { sendEmail } = require('../../services/email.service');
 
 /* =====================================================
    HELPERS
@@ -104,6 +107,10 @@ const login = async ({ email, password }) => {
 
   if (!user) {
     throw new Error('Email ou mot de passe incorrect');
+  }
+
+  if (!user.password) {
+    throw new Error('Ce compte utilise la connexion Google. Connectez-vous avec Google.');
   }
 
   const isPasswordValid = await user.comparePassword(password);
@@ -283,11 +290,160 @@ const deleteUser = async (userId) => {
 };
 
 /* =====================================================
+   FORGOT PASSWORD
+===================================================== */
+const forgotPassword = async (email) => {
+  const emailNormalized = normalizeEmail(email);
+  const user = await User.findOne({ email: emailNormalized });
+
+  if (!user) {
+    return { message: 'Si un compte existe, un email de réinitialisation a été envoyé.' };
+  }
+
+  if (user.authProvider === 'google' && !user.password) {
+    return { message: 'Si un compte existe, un email de réinitialisation a été envoyé.' };
+  }
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  user.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
+  await user.save({ validateBeforeSave: false });
+
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/+$/, '');
+  const resetUrl = `${frontendUrl}/auth/reset-password?token=${resetToken}`;
+
+  const html = `
+    <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #4a5a44;">
+      <h2 style="color: #b8956c;">Réinitialisation du mot de passe</h2>
+      <p>Bonjour ${user.name},</p>
+      <p>Vous avez demandé à réinitialiser votre mot de passe HK Event.</p>
+      <p style="text-align: center; margin: 32px 0;">
+        <a href="${resetUrl}" style="background: #b8956c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
+          Choisir un nouveau mot de passe
+        </a>
+      </p>
+      <p style="font-size: 13px; color: #7a8b72;">Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail(user.email, 'Réinitialisation de votre mot de passe — HK Event', html, {
+      recipientName: user.name,
+    });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    throw new Error("Impossible d'envoyer l'email de réinitialisation. Réessayez plus tard.");
+  }
+
+  return { message: 'Si un compte existe, un email de réinitialisation a été envoyé.' };
+};
+
+/* =====================================================
+   RESET PASSWORD
+===================================================== */
+const resetPassword = async (token, password) => {
+  if (!token || !password || password.length < 6) {
+    throw new Error('Données invalides');
+  }
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: new Date() },
+  }).select('+passwordResetToken +passwordResetExpires');
+
+  if (!user) {
+    throw new Error('Lien invalide ou expiré');
+  }
+
+  user.password = password;
+  user.authProvider = 'local';
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  const authToken = generateToken(user);
+  return {
+    token: authToken,
+    user: serializeUser(user),
+  };
+};
+
+/* =====================================================
+   GOOGLE AUTH
+===================================================== */
+const getGoogleClient = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error('Connexion Google non configurée');
+  }
+  return new OAuth2Client(clientId);
+};
+
+const googleAuth = async (credential) => {
+  if (!credential) {
+    throw new Error('Token Google manquant');
+  }
+
+  const client = getGoogleClient();
+  const ticket = await client.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  if (!payload?.email) {
+    throw new Error('Email Google introuvable');
+  }
+
+  const emailNormalized = normalizeEmail(payload.email);
+  const googleId = payload.sub;
+  const name = payload.name || payload.given_name || emailNormalized.split('@')[0];
+
+  let user = await User.findOne({
+    $or: [{ googleId }, { email: emailNormalized }],
+  }).select('+password');
+
+  if (user) {
+    if (!user.googleId) {
+      user.googleId = googleId;
+      user.authProvider = user.password ? user.authProvider : 'google';
+      await user.save();
+    }
+  } else {
+    user = new User({
+      name,
+      email: emailNormalized,
+      googleId,
+      authProvider: 'google',
+      role: 'user',
+      permissions: [],
+    });
+    await user.save();
+  }
+
+  const token = generateToken(user);
+  return {
+    token,
+    user: serializeUser(user),
+  };
+};
+
+/* =====================================================
    EXPORTS
 ===================================================== */
 module.exports = {
   register,
   login,
+  forgotPassword,
+  resetPassword,
+  googleAuth,
   getAllUsers,
   updatePermissions,
   updateUser,

@@ -47,8 +47,31 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
-      select: false, // 🔒 jamais exposer
+      default: null,
+      select: false,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      select: false,
     },
 
     role: {
@@ -86,8 +109,7 @@ const userSchema = new mongoose.Schema(
    HASH PASSWORD (FIX CRITIQUE)
 ===================================================== */
 userSchema.pre('save', async function () {
-  // ⚠️ IMPORTANT : ne re-hasher que si modifié
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return;
   }
 

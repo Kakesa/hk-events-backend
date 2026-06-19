@@ -205,7 +205,6 @@ const impersonate = async (req, res, next) => {
 ===================================================== */
 const deleteUser = async (req, res, next) => {
   try {
-    // 🚫 Empêcher un admin de se supprimer lui-même
     if (req.user && req.user._id.toString() === req.params.id) {
       return res.status(403).json({
         success: false,
@@ -241,6 +240,34 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    const result = await authService.forgotPassword(req.body.email);
+    res.status(200).json({ success: true, message: result.message });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    const result = await authService.resetPassword(token, password);
+    res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const googleAuth = async (req, res, next) => {
+  try {
+    const result = await authService.googleAuth(req.body.credential);
+    res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 /* =====================================================
    EXPORTS
 ===================================================== */
@@ -248,6 +275,9 @@ module.exports = {
   register,
   login,
   me,
+  forgotPassword,
+  resetPassword,
+  googleAuth,
   getSubscriptionLimits,
   getAllUsers,
   getAdmins,

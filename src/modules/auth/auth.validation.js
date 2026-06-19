@@ -28,3 +28,24 @@ exports.registerValidation = [
     .bail()
     .isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères'),
 ];
+
+exports.forgotPasswordValidation = [
+  body('email')
+    .notEmpty().withMessage('Email requis')
+    .bail()
+    .isEmail().withMessage('Email invalide'),
+];
+
+exports.resetPasswordValidation = [
+  body('token')
+    .notEmpty().withMessage('Token requis'),
+  body('password')
+    .notEmpty().withMessage('Mot de passe requis')
+    .bail()
+    .isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères'),
+];
+
+exports.googleAuthValidation = [
+  body('credential')
+    .notEmpty().withMessage('Token Google requis'),
+];
