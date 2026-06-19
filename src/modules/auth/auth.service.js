@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const { getPermissionsForRole } = require('../../constants/permissions');
 const { sendEmail } = require('../../services/email.service');
+const { uploadImage } = require('../../services/cloudinary.service');
 
 /* =====================================================
    HELPERS
@@ -22,6 +23,18 @@ const generateToken = (user) => {
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
+const normalizePhone = (phone) => {
+  if (phone === undefined || phone === null) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.startsWith('243') && cleaned.length === 12) {
+    cleaned = cleaned.substring(3);
+  }
+  if (cleaned.startsWith('0')) {
+    cleaned = cleaned.substring(1);
+  }
+  return cleaned;
+};
+
 const serializeUser = (user) => {
   const isPremiumAccess =
     user.subscriptionType === 'premium' || user.subscriptionType === 'enterprise';
@@ -32,6 +45,7 @@ const serializeUser = (user) => {
     name: user.name,
     email: user.email,
     phone: user.phone,
+    avatarUrl: user.avatarUrl || '',
     role: user.role,
     permissions: isPremiumAccess
       ? getPermissionsForRole('admin')
@@ -124,6 +138,57 @@ const login = async ({ email, password }) => {
     token,
     user: serializeUser(user),
   };
+};
+
+/* =====================================================
+   UPDATE PROFILE (CURRENT USER)
+===================================================== */
+const updateProfile = async (userId, data, file) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('Utilisateur introuvable');
+  }
+
+  if (data.name?.trim()) {
+    user.name = data.name.trim();
+  }
+
+  if (data.phone !== undefined) {
+    const phone = normalizePhone(data.phone);
+    if (phone && phone.length !== 9) {
+      throw new Error('Numéro de téléphone invalide (9 chiffres après +243)');
+    }
+    user.phone = phone;
+  }
+
+  if (data.email?.trim()) {
+    const emailNormalized = normalizeEmail(data.email);
+    if (emailNormalized !== user.email) {
+      const existing = await User.findOne({
+        email: emailNormalized,
+        _id: { $ne: userId },
+      });
+      if (existing) {
+        throw new Error('Email déjà utilisé');
+      }
+      user.email = emailNormalized;
+    }
+  }
+
+  if (file) {
+    user.avatarUrl = await uploadImage(file, 'hk-events/avatars');
+  }
+
+  await user.save();
+  return serializeUser(user);
+};
+
+const getCurrentUser = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('Utilisateur introuvable');
+  }
+  return serializeUser(user);
 };
 
 /* =====================================================
@@ -441,6 +506,8 @@ const googleAuth = async (credential) => {
 module.exports = {
   register,
   login,
+  updateProfile,
+  getCurrentUser,
   forgotPassword,
   resetPassword,
   googleAuth,
