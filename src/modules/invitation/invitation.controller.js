@@ -172,9 +172,10 @@ exports.sendInvitation = async (req, res) => {
 
     // Créer ou mettre à jour invitation
     const invitation = await Invitation.findOneAndUpdate(
-      { guestId },
+      { guestId, eventId },
       { 
         sentAt: new Date(), 
+        status: 'sent',
         distributionMethod: method,
         eventId: eventId
       },
@@ -335,6 +336,7 @@ exports.sendBulkInvitations = async (req, res) => {
           { guestId, eventId },
           { 
             sentAt: new Date(), 
+            status: 'sent',
             distributionMethod: method,
             eventId: eventId
           },
