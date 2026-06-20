@@ -2,6 +2,12 @@ const {
   getPlatformSettings,
   NEGOTIATED_GUEST_PRICES_FC,
 } = require('../../utils/guestPricing');
+const { createAudit } = require('../audit/audit.service');
+const {
+  PURGE_CONFIRM_PHRASE,
+  getPurgePreview,
+  purgeAllTestData,
+} = require('./maintenance.service');
 
 const getSettings = async (req, res, next) => {
   try {
@@ -48,4 +54,45 @@ const updateSettings = async (req, res, next) => {
   }
 };
 
-module.exports = { getSettings, updateSettings };
+const getPurgePreviewHandler = async (req, res, next) => {
+  try {
+    const preview = await getPurgePreview();
+    res.json({ success: true, data: preview });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const purgeTestDataHandler = async (req, res, next) => {
+  try {
+    const confirmPhrase = String(req.body.confirmPhrase || '').trim();
+
+    if (confirmPhrase !== PURGE_CONFIRM_PHRASE) {
+      return res.status(400).json({
+        success: false,
+        message: `Saisissez exactement « ${PURGE_CONFIRM_PHRASE} » pour confirmer`,
+      });
+    }
+
+    const before = await getPurgePreview();
+    const result = await purgeAllTestData();
+
+    await createAudit({
+      req,
+      action: 'PURGE_TEST_DATA',
+      target: { type: 'Platform', id: null },
+      before,
+      after: result.deleted,
+    });
+
+    res.json({
+      success: true,
+      message: 'Données de test supprimées. Seul le compte super admin est conservé.',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getSettings, updateSettings, getPurgePreviewHandler, purgeTestDataHandler };

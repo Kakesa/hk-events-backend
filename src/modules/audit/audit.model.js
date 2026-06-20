@@ -17,6 +17,7 @@ const auditSchema = new mongoose.Schema(
         'UPDATE_PERMISSIONS',
         'DELETE_USER',
         'LOGIN',
+        'PURGE_TEST_DATA',
       ],
     },
 
