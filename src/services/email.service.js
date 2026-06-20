@@ -107,6 +107,7 @@ async function sendEmail(to, subject, html, metadata = {}) {
     to,
     subject,
     html,
+    ...(metadata.replyTo ? { replyTo: metadata.replyTo } : {}),
   };
 
   try {
