@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-/* =====================================================
-   PERMISSION SCHEMA
-===================================================== */
 const permissionSchema = new mongoose.Schema(
   {
     module: {
@@ -19,9 +16,6 @@ const permissionSchema = new mongoose.Schema(
   { _id: false }
 );
 
-/* =====================================================
-   USER SCHEMA
-===================================================== */
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -91,18 +85,26 @@ const userSchema = new mongoose.Schema(
       type: [permissionSchema],
       default: [],
     },
+
     subscriptionType: {
       type: String,
       enum: ['free', 'basic', 'premium', 'enterprise'],
       default: 'free',
     },
+
     planLimitsBypass: {
       type: Boolean,
       default: false,
     },
+
     guestPriceFc: {
       type: Number,
       default: null,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
@@ -111,9 +113,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-/* =====================================================
-   HASH PASSWORD (FIX CRITIQUE)
-===================================================== */
 userSchema.pre('save', async function () {
   if (!this.isModified('password') || !this.password) {
     return;
@@ -123,9 +122,6 @@ userSchema.pre('save', async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-/* =====================================================
-   COMPARE PASSWORD
-===================================================== */
 userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!candidatePassword || !this.password) {
     return false;
@@ -134,7 +130,4 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-/* =====================================================
-   EXPORT
-===================================================== */
 module.exports = mongoose.model('User', userSchema);
