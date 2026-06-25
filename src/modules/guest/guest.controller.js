@@ -69,7 +69,7 @@ exports.getGuestsByEvent = async (req, res) => {
     }
 
     // 2. Récupérer les guests
-    const guests = await Guest.find({ eventId });
+    const guests = await Guest.find({ eventId }).sort({ createdAt: -1 });
     res.json({ success: true, data: guests });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
