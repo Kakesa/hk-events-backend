@@ -56,6 +56,9 @@ exports.getPublicRSVP = async (req, res) => {
           coverImage: event.coverImage,
           primaryColor: event.primaryColor,
           accentColor: event.accentColor,
+          theme: event.theme,
+          dressCode: event.dressCode,
+          dressCodeNotes: event.dressCodeNotes,
         },
         guest: {
           id: guest._id,
