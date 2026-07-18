@@ -82,6 +82,16 @@ const EventSchema = new mongoose.Schema(
       default: '#ffffff',
     },
 
+    dressCode: {
+      type: String,
+      trim: true,
+    },
+
+    dressCodeNotes: {
+      type: String,
+      trim: true,
+    },
+
     published: {
       type: Boolean,
       default: false,
