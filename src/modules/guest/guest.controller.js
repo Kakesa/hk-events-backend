@@ -16,8 +16,21 @@ const sanitizeGuestPayload = (payload = {}) => {
       throw error;
     }
     data.phone = normalized;
-  } else if (data.phone === '') {
+  } else if (data.phone === '' || data.phone === null) {
     data.phone = undefined;
+  }
+
+  if (data.email !== undefined && data.email !== null) {
+    const email = String(data.email).trim().toLowerCase();
+    if (!email) {
+      data.email = undefined;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      const error = new Error('Adresse email invalide');
+      error.statusCode = 400;
+      throw error;
+    } else {
+      data.email = email;
+    }
   }
 
   return data;

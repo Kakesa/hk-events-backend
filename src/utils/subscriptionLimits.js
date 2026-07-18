@@ -1,5 +1,6 @@
 const Event = require('../modules/event/event.model');
 const Guest = require('../modules/guest/guest.model');
+const User = require('../modules/users/users.model');
 const { getPlanDefinition } = require('../constants/subscriptionPlans');
 const {
   getPlatformSettings,
@@ -8,6 +9,9 @@ const {
   NEGOTIATED_GUEST_PRICES_FC,
 } = require('./guestPricing');
 const { getPermissionsForRole } = require('../constants/permissions');
+
+const ORGANIZER_QUOTA_MESSAGE =
+  "Vous avez atteint le nombre maximal d'invités autorisé par votre abonnement. Veuillez contacter l'administrateur pour augmenter votre quota.";
 
 function hasPremiumAdminAccess(user) {
   return user?.subscriptionType === 'premium' || user?.subscriptionType === 'enterprise';
@@ -42,25 +46,34 @@ function getEffectiveLimits(user) {
   };
 }
 
+async function countOrganizerGuests(userId) {
+  const userEvents = await Event.find({ userId }).select('_id');
+  const eventIds = userEvents.map((e) => e._id);
+  if (eventIds.length === 0) return 0;
+  return Guest.countDocuments({ eventId: { $in: eventIds } });
+}
+
+function hasOrganizerGuestQuota(owner) {
+  return owner?.maxGuests != null && owner.maxGuests >= 0;
+}
+
+function canAddGuestForOwner(owner, limits, totalGuestCount, eventGuestCount) {
+  if (isLimitsBypassed(owner)) return true;
+
+  if (hasOrganizerGuestQuota(owner)) {
+    return totalGuestCount < owner.maxGuests;
+  }
+
+  if (limits.maxGuests === null) return true;
+  return eventGuestCount < limits.maxGuests;
+}
+
 async function getSubscriptionLimitsStatus(user, eventId = null) {
   const limits = getEffectiveLimits(user);
   const platformSettings = await getPlatformSettings();
   const pricePerGuestFc = getEffectiveGuestPriceFc(user, platformSettings);
   const eventCount = await Event.countDocuments({ userId: user._id || user.id });
-
-  let totalGuestCount = 0;
-  if (eventId) {
-    const event = await Event.findById(eventId);
-    if (event && String(event.userId) === String(user._id || user.id)) {
-      totalGuestCount = await Guest.countDocuments({ eventId });
-    }
-  } else {
-    const userEvents = await Event.find({ userId: user._id || user.id }).select('_id');
-    const eventIds = userEvents.map((e) => e._id);
-    if (eventIds.length > 0) {
-      totalGuestCount = await Guest.countDocuments({ eventId: { $in: eventIds } });
-    }
-  }
+  const totalGuestCount = await countOrganizerGuests(user._id || user.id);
 
   const billing = calculateGuestBilling(totalGuestCount, pricePerGuestFc);
 
@@ -70,6 +83,8 @@ async function getSubscriptionLimitsStatus(user, eventId = null) {
     hasPremiumAdminAccess: hasPremiumAdminAccess(user),
     maxEvents: limits.maxEvents,
     maxGuests: limits.maxGuests,
+    maxGuestsQuota: hasOrganizerGuestQuota(user) ? user.maxGuests : null,
+    totalGuestCount,
     eventCount,
     canCreateEvent:
       limits.maxEvents === null || eventCount < limits.maxEvents,
@@ -92,9 +107,10 @@ async function getSubscriptionLimitsStatus(user, eventId = null) {
     status.guestCount = guestCount;
     status.canAddGuest =
       !isOwner ||
-      limits.maxGuests === null ||
-      guestCount < limits.maxGuests;
+      canAddGuestForOwner(user, limits, totalGuestCount, guestCount);
     status.eventBilling = calculateGuestBilling(guestCount, pricePerGuestFc);
+  } else {
+    status.canAddGuest = canAddGuestForOwner(user, limits, totalGuestCount, 0);
   }
 
   return status;
@@ -123,17 +139,15 @@ async function assertCanCreateEvent(user) {
   }
 }
 
-async function assertCanAddGuest(user, eventId) {
-  const limits = getEffectiveLimits(user);
-  if (limits.maxGuests === null) return;
-
+async function assertCanAddGuest(actingUser, eventId) {
   const event = await Event.findById(eventId);
   if (!event) {
     throw createLimitError('Événement introuvable', 'EVENT_NOT_FOUND');
   }
 
-  const isOwner = String(event.userId) === String(user._id || user.id);
-  const isSuperadmin = user.role === 'superadmin';
+  const ownerId = event.userId;
+  const isSuperadmin = actingUser.role === 'superadmin';
+  const isOwner = String(ownerId) === String(actingUser._id || actingUser.id);
 
   if (!isOwner && !isSuperadmin) {
     throw createLimitError(
@@ -141,6 +155,27 @@ async function assertCanAddGuest(user, eventId) {
       'FORBIDDEN'
     );
   }
+
+  if (isSuperadmin) return;
+
+  const owner = await User.findById(ownerId);
+  if (!owner) {
+    throw createLimitError('Organisateur introuvable', 'OWNER_NOT_FOUND');
+  }
+
+  if (isLimitsBypassed(owner)) return;
+
+  const totalGuestCount = await countOrganizerGuests(ownerId);
+
+  if (hasOrganizerGuestQuota(owner)) {
+    if (totalGuestCount >= owner.maxGuests) {
+      throw createLimitError(ORGANIZER_QUOTA_MESSAGE, 'ORGANIZER_QUOTA_GUESTS');
+    }
+    return;
+  }
+
+  const limits = getEffectiveLimits(owner);
+  if (limits.maxGuests === null) return;
 
   const guestCount = await Guest.countDocuments({ eventId });
   if (guestCount >= limits.maxGuests) {
@@ -172,9 +207,11 @@ function assertCustomTemplates(user) {
 }
 
 module.exports = {
+  ORGANIZER_QUOTA_MESSAGE,
   isLimitsBypassed,
   hasPremiumAdminAccess,
   getEffectiveLimits,
+  countOrganizerGuests,
   getSubscriptionLimitsStatus,
   assertCanCreateEvent,
   assertCanAddGuest,

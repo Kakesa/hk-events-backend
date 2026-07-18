@@ -102,6 +102,13 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    /** Quota total d'invités (tous événements) défini par le super admin. null = plan par défaut */
+    maxGuests: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
