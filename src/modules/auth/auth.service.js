@@ -53,6 +53,7 @@ const serializeUser = (user) => {
     subscriptionType: user.subscriptionType,
     planLimitsBypass: user.planLimitsBypass === true,
     guestPriceFc: user.guestPriceFc ?? null,
+    maxGuests: user.maxGuests ?? null,
     isActive: user.isActive,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -292,6 +293,18 @@ const updateUser = async (userId, updateData) => {
       user[field] = updateData[field];
     }
   });
+
+  if (updateData.maxGuests !== undefined) {
+    if (updateData.maxGuests === '' || updateData.maxGuests === null) {
+      user.maxGuests = null;
+    } else {
+      const quota = Number(updateData.maxGuests);
+      if (!Number.isFinite(quota) || quota < 0 || !Number.isInteger(quota)) {
+        throw new Error('Le quota d\'invités doit être un entier positif ou vide');
+      }
+      user.maxGuests = quota;
+    }
+  }
 
   await user.save();
 
