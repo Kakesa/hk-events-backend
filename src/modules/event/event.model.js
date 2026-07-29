@@ -105,6 +105,17 @@ const EventSchema = new mongoose.Schema(
 
     invitationLink: String,
 
+    seating: {
+      configured: { type: Boolean, default: false },
+      expectedGuestCount: { type: Number, default: 0 },
+      setupMethod: {
+        type: String,
+        enum: ['by_table_count', 'by_capacity', 'manual', ''],
+        default: '',
+      },
+      skippedAt: Date,
+    },
+
     guestbook: [GuestbookSchema],
   },
   { timestamps: true }

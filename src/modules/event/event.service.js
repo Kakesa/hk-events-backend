@@ -99,6 +99,12 @@ const updateEvent = async (eventId, userId, data, file) => {
 const deleteEvent = async (eventId, userId) => {
   const event = await Event.findOneAndDelete({ _id: eventId, userId });
   if (!event) throw new Error('Événement non trouvé');
+  try {
+    const { cleanupEventSeating } = require('../seating/seating.service');
+    await cleanupEventSeating(eventId);
+  } catch (err) {
+    console.error('Erreur nettoyage seating:', err.message);
+  }
   return mapEvent(event);
 };
 

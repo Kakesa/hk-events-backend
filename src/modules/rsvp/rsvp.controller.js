@@ -231,6 +231,7 @@ exports.checkInByQR = async (req, res) => {
         guest: {
           id: guest._id,
           name: guest.name,
+          table: guest.table || "",
           checkedInAt: guest.checkedInAt,
         },
         event: {

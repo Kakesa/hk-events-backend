@@ -71,6 +71,20 @@ const guestSchema = new mongoose.Schema(
       default: "",
     },
 
+    tableId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Table',
+      default: null,
+      index: true,
+    },
+
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'GuestGroup',
+      default: null,
+      index: true,
+    },
+
   },
   { timestamps: true }
 );

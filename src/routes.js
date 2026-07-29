@@ -15,6 +15,7 @@ module.exports = (app) => {
   app.use('/api/activities', require('./modules/activity/activity.routes'));
   app.use('/api/emails', require('./modules/email/email.routes'));
   app.use('/api/invitations', invitationRoutes);
+  app.use('/api/seating', require('./modules/seating/seating.routes'));
   app.use('/api/public', rsvpRoutes);
   app.use('/api/payments', require('./modules/payment/payment.routes'));
   app.use('/api/platform', require('./modules/platform/platform.routes'));
