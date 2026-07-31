@@ -496,6 +496,8 @@ const googleAuth = async (credential) => {
   const googleId = payload.sub;
   const name = payload.name || payload.given_name || emailNormalized.split('@')[0];
 
+  let isNewUser = false;
+
   let user = await User.findOne({
     $or: [{ googleId }, { email: emailNormalized }],
   }).select('+password');
@@ -507,6 +509,7 @@ const googleAuth = async (credential) => {
       await user.save();
     }
   } else {
+    isNewUser = true;
     user = new User({
       name,
       email: emailNormalized,
@@ -528,6 +531,7 @@ const googleAuth = async (credential) => {
   return {
     token,
     user: serializeUser(user),
+    isNewUser,
   };
 };
 
