@@ -7,6 +7,8 @@ const WhatsAppLog = require('../whatsapp-log/whatsapp-log.model');
 const User = require('../users/users.model');
 const Payment = require('../payment/payment.model');
 const AuditLog = require('../audit/audit.model');
+const Table = require('../seating/table.model');
+const GuestGroup = require('../seating/guestGroup.model');
 const { deleteStoredImage } = require('../../services/cloudinary.service');
 
 const PURGE_CONFIRM_PHRASE = 'NETTOYER';
@@ -34,6 +36,8 @@ async function getPurgePreview() {
     users,
     usersWithAvatars,
     payments,
+    tables,
+    guestGroups,
   ] = await Promise.all([
     Event.countDocuments(),
     Guest.countDocuments(),
@@ -49,6 +53,8 @@ async function getPurgePreview() {
       avatarUrl: { $exists: true, $nin: [null, ''] },
     }),
     Payment.countDocuments(),
+    Table.countDocuments(),
+    GuestGroup.countDocuments(),
   ]);
 
   return {
@@ -63,6 +69,8 @@ async function getPurgePreview() {
     users,
     userAvatars: usersWithAvatars,
     payments,
+    tables,
+    guestGroups,
     totalMessages: guestbookMessages + emails + whatsappLogs,
   };
 }
@@ -86,6 +94,8 @@ async function purgeAllTestData() {
     deletedPayments,
     deletedUsers,
     deletedAuditLogs,
+    deletedTables,
+    deletedGuestGroups,
   ] = await Promise.all([
     Guest.deleteMany({}),
     Invitation.deleteMany({}),
@@ -96,6 +106,8 @@ async function purgeAllTestData() {
     Payment.deleteMany({}),
     User.deleteMany(NON_SUPERADMIN_FILTER),
     AuditLog.deleteMany({}),
+    Table.deleteMany({}),
+    GuestGroup.deleteMany({}),
   ]);
 
   const photoResults = await Promise.all(
@@ -116,6 +128,8 @@ async function purgeAllTestData() {
       users: deletedUsers.deletedCount || 0,
       payments: deletedPayments.deletedCount || 0,
       auditLogs: deletedAuditLogs.deletedCount || 0,
+      tables: deletedTables.deletedCount || 0,
+      guestGroups: deletedGuestGroups.deletedCount || 0,
     },
     photosFailed,
     superAdminsPreserved: await User.countDocuments({ role: 'superadmin' }),

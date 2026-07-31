@@ -5,6 +5,7 @@ const { OAuth2Client } = require('google-auth-library');
 const { getPermissionsForRole } = require('../../constants/permissions');
 const { sendEmail } = require('../../services/email.service');
 const { uploadImage } = require('../../services/cloudinary.service');
+const { sendWelcomeToNewUser } = require('../../services/whatsapp.service');
 
 /* =====================================================
    HELPERS
@@ -74,8 +75,13 @@ const register = async (data) => {
   } = data;
 
   // 🔒 Sécurité : validation minimale (en plus d’express-validator)
-  if (!name || !email || !password) {
+  if (!name || !email || !password || !phone) {
     throw new Error('Champs obligatoires manquants');
+  }
+
+  const phoneNormalized = normalizePhone(phone);
+  if (!phoneNormalized || phoneNormalized.length !== 9) {
+    throw new Error('Numéro de téléphone invalide (9 chiffres RDC requis)');
   }
 
   const emailNormalized = normalizeEmail(email);
@@ -91,13 +97,19 @@ const register = async (data) => {
   const user = new User({
     name,
     email: emailNormalized,
-    phone,
+    phone: phoneNormalized,
     password, // hash géré par le model (pre save)
     role: safeRole,
     permissions: Array.isArray(permissions) ? permissions : [],
   });
 
   await user.save();
+
+  void sendWelcomeToNewUser({
+    name: user.name,
+    phone: user.phone,
+    userId: user._id,
+  }).catch((err) => console.error('Welcome WhatsApp error:', err.message));
 
   const token = generateToken(user);
 
@@ -504,6 +516,12 @@ const googleAuth = async (credential) => {
       permissions: [],
     });
     await user.save();
+
+    void sendWelcomeToNewUser({
+      name: user.name,
+      phone: user.phone,
+      userId: user._id,
+    }).catch((err) => console.error('Welcome WhatsApp error:', err.message));
   }
 
   const token = generateToken(user);
