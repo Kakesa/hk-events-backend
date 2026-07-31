@@ -20,8 +20,15 @@ exports.registerValidation = [
     .isEmail().withMessage('Email invalide'),
 
   body('phone')
-    .optional()
-    .isMobilePhone().withMessage('Numéro de téléphone invalide'),
+    .notEmpty().withMessage('Numéro de téléphone requis')
+    .bail()
+    .custom((value) => {
+      const { normalizePhoneToE164 } = require('../../utils/phone');
+      if (!normalizePhoneToE164(value)) {
+        throw new Error('Numéro invalide. Utilisez 9 chiffres RDC (ex: 812345678)');
+      }
+      return true;
+    }),
 
   body('password')
     .notEmpty().withMessage('Mot de passe requis')

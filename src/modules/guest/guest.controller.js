@@ -2,6 +2,7 @@ const Guest = require('./guest.model');
 const Event = require('../event/event.model');
 const { normalizePhoneToE164 } = require('../../utils/phone');
 const { assertCanAddGuest } = require('../../utils/subscriptionLimits');
+const { ensureGuestInvitationCode } = require('../../utils/invitationCode');
 
 const sanitizeGuestPayload = (payload = {}) => {
   const data = { ...payload };
@@ -49,6 +50,7 @@ exports.createGuest = async (req, res) => {
     }
 
     const guest = await Guest.create(sanitizeGuestPayload(req.body));
+    await ensureGuestInvitationCode(guest);
     res.status(201).json({ success: true, data: guest });
   } catch (err) {
     res.status(err.statusCode || 400).json({ success: false, message: err.message, code: err.code });

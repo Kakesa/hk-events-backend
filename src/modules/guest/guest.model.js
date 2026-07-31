@@ -59,11 +59,43 @@ const guestSchema = new mongoose.Schema(
     qrCode: String,
     qrGeneratedAt: Date,
 
+    invitationCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+    },
+
     checkedIn: {
       type: Boolean,
       default: false,
     },
     checkedInAt: Date,
+    checkedInBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    checkedInByName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    checkedInMethod: {
+      type: String,
+      enum: ['QR_CODE', 'SEARCH_NAME', 'SEARCH_PHONE', 'SEARCH_INVITATION_CODE'],
+      default: null,
+    },
+
+    plusOne: {
+      type: Boolean,
+      default: false,
+    },
+    plusOneName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
 
     table: {
       type: String,
@@ -88,6 +120,8 @@ const guestSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+guestSchema.index({ eventId: 1, invitationCode: 1 }, { unique: true, sparse: true });
 
 /* =====================================================
    ANALYTICS AUTO UPDATE (POST SAVE)
