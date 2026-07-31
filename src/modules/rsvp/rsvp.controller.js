@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 const Event = require("../event/event.model");
 const Guest = require("../guest/guest.model");
-const { parseScanToken, ensureGuestQrCode } = require("../../utils/qr");
-const { getEventEndDateTime } = require("../../utils/eventTime");
+const { ensureGuestQrCode } = require("../../utils/qr");
 const eventService = require("../event/event.service");
 
 /* =====================================================
@@ -69,6 +68,7 @@ exports.getPublicRSVP = async (req, res) => {
           dietaryRestrictions: guest.dietaryRestrictions,
           message: guest.message,
           qrCode: guest.status === "confirmed" ? guest.qrCode : undefined,
+          invitationCode: guest.status === "confirmed" ? guest.invitationCode : undefined,
         },
       },
     });
@@ -165,94 +165,62 @@ exports.submitRSVP = async (req, res) => {
 ===================================================== */
 exports.checkInByQR = async (req, res) => {
   try {
-    const token = parseScanToken(req.params.qrCode);
+    const {
+      performPublicQrCheckIn,
+      CheckInError,
+    } = require('../../services/checkin.service');
 
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "QR code invalide",
-      });
-    }
-
-    let guest = await Guest.findOne({ qrCode: token }).populate("eventId");
-
-    // Compatibilité : anciens QR contenant seulement l'ID invité
-    if (!guest && mongoose.Types.ObjectId.isValid(token)) {
-      guest = await Guest.findById(token).populate("eventId");
-      if (guest?.status === "confirmed") {
-        await ensureGuestQrCode(guest);
-      }
-    }
-
-    if (!guest) {
-      return res.status(404).json({
-        success: false,
-        message: "QR code invalide",
-      });
-    }
-
-    // ⛔ QR expiré après l'événement
-    const eventEnd = getEventEndDateTime(guest.eventId);
-    if (eventEnd && new Date() > eventEnd) {
-      return res.status(403).json({
-        success: false,
-        message: "QR code expiré – événement terminé",
-      });
-    }
-
-    // ⛔ Invité non confirmé
-    if (guest.status !== "confirmed") {
-      return res.status(403).json({
-        success: false,
-        message: "Invité non confirmé",
-      });
-    }
-
-    // 🚫 Déjà check-in
-    if (guest.checkedIn) {
-      return res.status(400).json({
-        success: false,
-        message: "Invité déjà enregistré",
-        data: {
-          alreadyCheckedIn: true,
-          checkedInAt: guest.checkedInAt,
-          guest: {
-            id: guest._id,
-            name: guest.name,
-            table: guest.table || null,
-          },
-          event: {
-            id: guest.eventId._id,
-            title: guest.eventId.title,
-          },
-        },
-      });
-    }
-
-    // ✅ Check-in
-    guest.checkedIn = true;
-    guest.checkedInAt = new Date();
-    await guest.save();
+    const result = await performPublicQrCheckIn(req.params.qrCode);
 
     res.json({
       success: true,
-      message: "Check-in validé",
+      message: 'Check-in validé',
       data: {
         guest: {
-          id: guest._id,
-          name: guest.name,
-          table: guest.table || "",
-          checkedInAt: guest.checkedInAt,
+          id: result.guest.id,
+          name: result.guest.name,
+          table: result.guest.table || '',
+          checkedInAt: result.guest.checkedInAt,
+          phone: result.guest.phone,
+          invitationCode: result.guest.invitationCode,
+          invitationStatus: result.guest.invitationStatus,
         },
-        event: {
-          id: guest.eventId._id,
-          title: guest.eventId.title,
-        },
+        event: result.event,
       },
     });
   } catch (err) {
-    console.error("checkInByQR error:", err);
-    res.status(500).json({ success: false, message: "Erreur serveur" });
+    if (err instanceof CheckInError) {
+      if (err.data?.alreadyCheckedIn) {
+        const guest = err.data.guest;
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message,
+          data: {
+            alreadyCheckedIn: true,
+            checkedInAt: guest.checkedInAt,
+            guest: {
+              id: guest.id,
+              name: guest.name,
+              table: guest.table || null,
+              checkedInAt: guest.checkedInAt,
+              checkedInBy: guest.checkedInBy,
+              invitationCode: guest.invitationCode,
+            },
+            event: {
+              id: guest.eventId,
+              title: guest.eventName,
+            },
+          },
+        });
+      }
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message,
+        data: err.data || undefined,
+      });
+    }
+    console.error('checkInByQR error:', err);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 };
 
@@ -401,11 +369,15 @@ exports.generateGuestQr = async (req, res) => {
       });
     }
 
-    const qrCode = await ensureGuestQrCode(guest);
+    await ensureGuestQrCode(guest);
 
     res.json({
       success: true,
-      data: { qrCode, code: qrCode },
+      data: {
+        qrCode: guest.qrCode,
+        invitationCode: guest.invitationCode,
+        code: guest.invitationCode,
+      },
     });
   } catch (err) {
     console.error("generateGuestQr error:", err);

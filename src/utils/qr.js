@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const mongoose = require("mongoose");
+const { ensureGuestInvitationCode } = require("./invitationCode");
 
 /** Token stable — même invité = même QR à chaque fois */
 exports.generateQRCode = (eventId, guestId) => {
@@ -37,7 +38,12 @@ exports.ensureGuestQrCode = async (guest) => {
     guest.qrGeneratedAt = new Date();
   }
 
-  await guest.save();
+  if (!guest.invitationCode) {
+    await ensureGuestInvitationCode(guest);
+  } else {
+    await guest.save();
+  }
+
   return guest.qrCode;
 };
 

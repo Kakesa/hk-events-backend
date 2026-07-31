@@ -6,6 +6,8 @@ const upload = require('../../middlewares/upload');
 const { restrictTo } = require('../../middlewares/role.middleware');
 const { checkPermission } = require('../../middlewares/permission.middleware');
 
+const checkinRoutes = require('../checkin/checkin.routes');
+
 const {
   getPublicEventBySlug,
   addGuestBookPublic,
@@ -55,6 +57,9 @@ router.get(
   checkPermission('events', 'read'),
   getEvents
 );
+
+// CHECK-IN / RECHERCHE INVITÉS (contrôle à l'entrée)
+router.use('/:eventId/invitations', checkinRoutes);
 
 // GET SINGLE EVENT
 router.get(
