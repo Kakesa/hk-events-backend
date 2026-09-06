@@ -1,4 +1,5 @@
 const CheckInLog = require('../checkin/checkInLog.model');
+const MarqueTable = require('../marque-table/marqueTable.model');
 const Event = require('../event/event.model');
 const Guest = require('../guest/guest.model');
 const Invitation = require('../invitation/invitation.model');
@@ -40,6 +41,7 @@ async function getPurgePreview() {
     tables,
     guestGroups,
     checkInLogs,
+    marqueTables,
   ] = await Promise.all([
     Event.countDocuments(),
     Guest.countDocuments(),
@@ -58,6 +60,7 @@ async function getPurgePreview() {
     Table.countDocuments(),
     GuestGroup.countDocuments(),
     CheckInLog.countDocuments(),
+    MarqueTable.countDocuments(),
   ]);
 
   return {
@@ -75,6 +78,7 @@ async function getPurgePreview() {
     tables,
     guestGroups,
     checkInLogs,
+    marqueTables,
     totalMessages: guestbookMessages + emails + whatsappLogs,
   };
 }
@@ -101,6 +105,7 @@ async function purgeAllTestData() {
     deletedTables,
     deletedGuestGroups,
     deletedCheckInLogs,
+    deletedMarqueTables,
   ] = await Promise.all([
     Guest.deleteMany({}),
     Invitation.deleteMany({}),
@@ -114,6 +119,7 @@ async function purgeAllTestData() {
     Table.deleteMany({}),
     GuestGroup.deleteMany({}),
     CheckInLog.deleteMany({}),
+    MarqueTable.deleteMany({}),
   ]);
 
   const photoResults = await Promise.all(
@@ -137,6 +143,7 @@ async function purgeAllTestData() {
       tables: deletedTables.deletedCount || 0,
       guestGroups: deletedGuestGroups.deletedCount || 0,
       checkInLogs: deletedCheckInLogs.deletedCount || 0,
+      marqueTables: deletedMarqueTables.deletedCount || 0,
     },
     photosFailed,
     superAdminsPreserved: await User.countDocuments({ role: 'superadmin' }),
