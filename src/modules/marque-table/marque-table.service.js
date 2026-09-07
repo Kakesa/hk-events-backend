@@ -33,6 +33,7 @@ function sanitizePayload(body = {}) {
     'displayDateOverride',
     'order',
     'design',
+    'tableId',
   ];
 
   for (const field of fields) {
@@ -43,12 +44,101 @@ function sanitizePayload(body = {}) {
 
   if (data.displayNameOverride === '') data.displayNameOverride = null;
   if (data.displayDateOverride === '') data.displayDateOverride = null;
+  if (data.tableId === '') data.tableId = null;
   if (data.number !== undefined) data.number = String(data.number).trim();
   if (data.titleText === undefined && data.number !== undefined) {
     // keep titleText independent; caller may set both
   }
 
   return data;
+}
+
+/**
+ * Déduit label / titleText depuis le nom d'une table seating.
+ * Ex. "Table 3" → label "Table", titleText "3"
+ * Ex. "VIP" → label "", titleText "VIP"
+ */
+function payloadFromSeatingTable(table, order) {
+  const numberStr = String(table.number ?? '');
+  const name = String(table.name || '').trim() || `Table ${numberStr}`;
+  const tableId = table._id || table.id || null;
+
+  const match = name.match(/^(.+?)\s+(\S+)$/);
+  let label = 'Table';
+  let titleText = numberStr || name;
+
+  if (match) {
+    const left = match[1].trim();
+    const right = match[2].trim();
+    if (/^table$/i.test(left)) {
+      label = 'Table';
+      titleText = right;
+    } else {
+      label = left;
+      titleText = right;
+    }
+  } else {
+    label = '';
+    titleText = name;
+  }
+
+  return {
+    tableId,
+    number: numberStr || titleText,
+    label,
+    titleText,
+    order:
+      order !== undefined
+        ? order
+        : Math.max(0, Number(table.number || 1) - 1),
+  };
+}
+
+/** Crée les marque-tables liés aux tables seating (après génération). */
+async function createManyFromSeatingTables(eventId, tables = []) {
+  if (!tables.length) return [];
+
+  const tableIds = tables.map((t) => t._id).filter(Boolean);
+  if (tableIds.length) {
+    await MarqueTable.deleteMany({ eventId, tableId: { $in: tableIds } });
+  }
+
+  const docs = tables.map((table, index) => ({
+    eventId,
+    ...payloadFromSeatingTable(table, index),
+    design: {},
+  }));
+
+  return MarqueTable.insertMany(docs);
+}
+
+async function upsertFromSeatingTable(table) {
+  if (!table?._id) return null;
+
+  const payload = payloadFromSeatingTable(table);
+  const existing = await MarqueTable.findOne({ tableId: table._id });
+
+  if (!existing) {
+    const count = await MarqueTable.countDocuments({ eventId: table.eventId });
+    return MarqueTable.create({
+      eventId: table.eventId,
+      ...payload,
+      order: payload.order ?? count,
+      design: {},
+    });
+  }
+
+  existing.number = payload.number;
+  existing.label = payload.label;
+  existing.titleText = payload.titleText;
+  existing.tableId = payload.tableId;
+  await existing.save();
+  return existing;
+}
+
+async function removeBySeatingTableId(tableId) {
+  if (!tableId) return;
+  await MarqueTable.deleteMany({ tableId });
 }
 
 async function listByEvent(user, eventId) {
@@ -147,11 +237,50 @@ async function duplicate(user, id) {
     titleText: source.titleText === source.number ? nextNumber : source.titleText,
     displayNameOverride: source.displayNameOverride,
     displayDateOverride: source.displayDateOverride,
+    tableId: null,
     order: nextOrder,
     design,
   });
 
   return copy;
+}
+
+/** Crée / met à jour les marque-tables à partir des tables seating existantes. */
+async function syncFromEventTables(user, eventId) {
+  await assertEventAccess(user, eventId);
+  const Table = require('../seating/table.model');
+  const tables = await Table.find({ eventId }).sort({ number: 1 });
+
+  if (!tables.length) {
+    throw new MarqueTableError(
+      'Aucune table seating trouvée. Générez d’abord les tables.',
+      400,
+    );
+  }
+
+  const results = [];
+  for (let i = 0; i < tables.length; i += 1) {
+    const payload = payloadFromSeatingTable(tables[i], i);
+    const existing = await MarqueTable.findOne({ tableId: tables[i]._id });
+    if (existing) {
+      existing.number = payload.number;
+      existing.label = payload.label;
+      existing.titleText = payload.titleText;
+      existing.order = i;
+      await existing.save();
+      results.push(existing);
+    } else {
+      const created = await MarqueTable.create({
+        eventId,
+        ...payload,
+        order: i,
+        design: {},
+      });
+      results.push(created);
+    }
+  }
+
+  return MarqueTable.find({ eventId }).sort({ order: 1, createdAt: 1 });
 }
 
 async function reorder(user, eventId, items) {
@@ -182,4 +311,9 @@ module.exports = {
   remove,
   duplicate,
   reorder,
+  payloadFromSeatingTable,
+  createManyFromSeatingTables,
+  upsertFromSeatingTable,
+  removeBySeatingTableId,
+  syncFromEventTables,
 };

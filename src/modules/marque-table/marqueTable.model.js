@@ -121,6 +121,13 @@ const MarqueTableSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    /** Lien optionnel vers une table seating (sync auto à la génération) */
+    tableId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Table',
+      default: null,
+      index: true,
+    },
     displayNameOverride: {
       type: String,
       trim: true,

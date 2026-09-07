@@ -47,3 +47,12 @@ exports.reorder = handle(async (req, res) => {
   const data = await service.reorder(req.user, req.params.eventId, req.body.items);
   res.json({ success: true, data });
 });
+
+exports.syncFromTables = handle(async (req, res) => {
+  const data = await service.syncFromEventTables(req.user, req.params.eventId);
+  res.json({
+    success: true,
+    data,
+    message: 'Marque-tables synchronisés depuis les tables',
+  });
+});

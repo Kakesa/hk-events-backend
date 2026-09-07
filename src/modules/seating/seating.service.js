@@ -2,6 +2,7 @@ const Event = require('../event/event.model');
 const Guest = require('../guest/guest.model');
 const Table = require('./table.model');
 const GuestGroup = require('./guestGroup.model');
+const marqueTableService = require('../marque-table/marque-table.service');
 
 const TABLE_COLORS = [
   '#6366f1',
@@ -198,6 +199,9 @@ async function generateTables(user, eventId, config) {
   };
   await event.save();
 
+  // Marque-tables générés automatiquement selon les noms des tables
+  await marqueTableService.createManyFromSeatingTables(eventId, created);
+
   return enrichTablesWithCounts(created);
 }
 
@@ -233,6 +237,8 @@ async function createTable(user, eventId, data) {
     await event.save();
   }
 
+  await marqueTableService.upsertFromSeatingTable(table);
+
   const enriched = await enrichTablesWithCounts([table]);
   return enriched[0];
 }
@@ -265,6 +271,10 @@ async function updateTable(user, tableId, data) {
     await Guest.updateMany({ tableId: table._id }, { table: table.name });
   }
 
+  if (data.name !== undefined || data.number !== undefined) {
+    await marqueTableService.upsertFromSeatingTable(table);
+  }
+
   const enriched = await enrichTablesWithCounts([table]);
   return enriched[0];
 }
@@ -281,6 +291,7 @@ async function deleteTable(user, tableId) {
   }
 
   await Table.deleteOne({ _id: table._id });
+  await marqueTableService.removeBySeatingTableId(table._id);
   return { deleted: true };
 }
 
@@ -549,8 +560,14 @@ async function getPrintData(user, eventId, tableId) {
 
 async function cleanupEventSeating(eventId) {
   await Guest.updateMany({ eventId }, { $set: { tableId: null, table: '' } });
+  const tables = await Table.find({ eventId }).select('_id');
+  const tableIds = tables.map((t) => t._id);
   await Table.deleteMany({ eventId });
   await GuestGroup.deleteMany({ eventId });
+  if (tableIds.length) {
+    const MarqueTable = require('../marque-table/marqueTable.model');
+    await MarqueTable.deleteMany({ eventId, tableId: { $in: tableIds } });
+  }
 }
 
 module.exports = {
