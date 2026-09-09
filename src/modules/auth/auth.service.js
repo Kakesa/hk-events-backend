@@ -168,7 +168,7 @@ const updateProfile = async (userId, data, file) => {
 
   if (data.phone !== undefined) {
     const phone = normalizePhone(data.phone);
-    if (phone && phone.length !== 9) {
+    if (!phone || phone.length !== 9) {
       throw new Error('Numéro de téléphone invalide (9 chiffres après +243)');
     }
     user.phone = phone;
@@ -476,7 +476,7 @@ const getGoogleClient = () => {
   return new OAuth2Client(clientId);
 };
 
-const googleAuth = async (credential) => {
+const googleAuth = async (credential, phone) => {
   if (!credential) {
     throw new Error('Token Google manquant');
   }
@@ -496,6 +496,9 @@ const googleAuth = async (credential) => {
   const googleId = payload.sub;
   const name = payload.name || payload.given_name || emailNormalized.split('@')[0];
 
+  const phoneNormalized = normalizePhone(phone);
+  const hasValidPhone = Boolean(phoneNormalized && phoneNormalized.length === 9);
+
   let isNewUser = false;
 
   let user = await User.findOne({
@@ -506,13 +509,35 @@ const googleAuth = async (credential) => {
     if (!user.googleId) {
       user.googleId = googleId;
       user.authProvider = user.password ? user.authProvider : 'google';
-      await user.save();
     }
+
+    const missingPhone = !String(user.phone || '').trim();
+    if (missingPhone) {
+      if (!hasValidPhone) {
+        const err = new Error(
+          'Numéro de téléphone requis pour finaliser l’inscription',
+        );
+        err.code = 'PHONE_REQUIRED';
+        throw err;
+      }
+      user.phone = phoneNormalized;
+    }
+
+    await user.save();
   } else {
+    if (!hasValidPhone) {
+      const err = new Error(
+        'Numéro de téléphone requis pour finaliser l’inscription',
+      );
+      err.code = 'PHONE_REQUIRED';
+      throw err;
+    }
+
     isNewUser = true;
     user = new User({
       name,
       email: emailNormalized,
+      phone: phoneNormalized,
       googleId,
       authProvider: 'google',
       role: 'user',
