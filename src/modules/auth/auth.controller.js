@@ -283,9 +283,16 @@ const resetPassword = async (req, res, next) => {
 
 const googleAuth = async (req, res, next) => {
   try {
-    const result = await authService.googleAuth(req.body.credential);
+    const result = await authService.googleAuth(req.body.credential, req.body.phone);
     res.status(200).json({ success: true, data: result });
   } catch (err) {
+    if (err.code === 'PHONE_REQUIRED') {
+      return res.status(400).json({
+        success: false,
+        code: 'PHONE_REQUIRED',
+        message: err.message,
+      });
+    }
     next(err);
   }
 };
