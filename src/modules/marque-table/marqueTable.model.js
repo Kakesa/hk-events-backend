@@ -46,7 +46,7 @@ const DesignSchema = new mongoose.Schema(
       enabled: { type: Boolean, default: true },
       motif: {
         type: String,
-        enum: ['event-cover', 'floral-left', 'none'],
+        enum: ['event-cover', 'floral', 'floral-left', 'none'],
         default: 'event-cover',
       },
       opacity: { type: Number, default: 0.98 },
