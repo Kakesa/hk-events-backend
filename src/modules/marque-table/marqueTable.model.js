@@ -46,10 +46,10 @@ const DesignSchema = new mongoose.Schema(
       enabled: { type: Boolean, default: true },
       motif: {
         type: String,
-        enum: ['floral-left', 'none'],
-        default: 'floral-left',
+        enum: ['event-cover', 'floral-left', 'none'],
+        default: 'event-cover',
       },
-      opacity: { type: Number, default: 0.95 },
+      opacity: { type: Number, default: 0.98 },
     },
     label: {
       type: TextStyleSchema,
