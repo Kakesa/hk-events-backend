@@ -75,7 +75,7 @@ const verifyEmailTransport = async () => {
   }
 
   const host = process.env.SMTP_HOST || 'gmail (service par défaut)';
-  console.log(`📬 SMTP configuré : ${host} → ${process.env.EMAIL_USER}`);
+  // console.log(`📬 SMTP configuré : ${host} → ${process.env.EMAIL_USER}`);
 
   try {
     await getTransporter().verify();
